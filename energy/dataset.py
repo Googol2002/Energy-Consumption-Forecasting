@@ -28,12 +28,12 @@ class LD2011_2014(Dataset):
         self.transform = transform
         self.length = length
         if csv_file not in dataset_buffered:
-            dataset_buffered[csv_file] = pd.read_csv(csv_file, usecols=range(1, 20), dtype="float32",
-                                                     delimiter=";", decimal=",")
+            dataset_buffered[csv_file] = np.array(pd.read_csv(csv_file, usecols=range(1, 20), dtype="float32",
+                                                              delimiter=";", decimal=",").to_numpy(), order='F')
         self.dataset = dataset_buffered[csv_file]
-        self.counts = self.dataset[self.dataset == 0].count() - length
+        self.counts = np.where(self.dataset, 0, 1).sum(axis=0) - length
         self.counts[self.counts < 0] = 0    # 舍弃掉不足length + 1的数据
-        self.total_counts = list(accumulate(self.counts.tolist()))
+        self.total_counts = np.add.accumulate(self.counts)
 
         print(self.total_counts)
 
@@ -41,12 +41,10 @@ class LD2011_2014(Dataset):
         return self.total_counts[-1]
 
     def __getitem__(self, index) -> T_co:
-        col_index = search_sorted(self.total_counts, index)
-        col_offset = index if col_index == 0 else (index - self.total_counts[col_index - 1])
-        target_col = self.dataset[self.dataset.columns[col_index]]
-        target_col = target_col[target_col != 0].to_numpy()
+        col = search_sorted(self.total_counts, index)
+        row_offset = index if col == 0 else (index - self.total_counts[col - 1])
 
-        return target_col[col_offset: col_offset + self.length], target_col[col_offset + self.length + 1]
+        return self.dataset[row_offset: row_offset + self.length, col], self.dataset[row_offset + self.length, col]
 
     def __iter__(self):
         return (self[i] for i in range(self.total_counts[-1]))
