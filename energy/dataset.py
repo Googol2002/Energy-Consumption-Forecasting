@@ -47,14 +47,16 @@ class LD2011_2014(Dataset):
     length: 序列长度，length为不包含y的长度
     """
 
-    def __init__(self, length, csv_file=r"dataset/LD2011_2014.csv", transform=None):
+    def __init__(self, length, csv_file=r"dataset/LD2011_2014.csv", transform=None, size=370):
         self.transform = transform
         self.length = length
         if csv_file not in dataset_buffered:
-            dataset_buffered[csv_file] = np.array(pd.read_csv(csv_file, usecols=range(1, 371), dtype="float32",
+            dataset_buffered[csv_file] = np.array(pd.read_csv(csv_file, usecols=range(1, size + 1), dtype="float32",
                                                               delimiter=";", decimal=",").to_numpy(), order='F')
         self.dataset = dataset_buffered[csv_file]
-        self.counts = np.where(self.dataset, 0, 1).sum(axis=0) - length
+        # self.counts = np.where(self.dataset, 0, 1).sum(axis=0) - length
+        self.offsets = (self.dataset != 0).argmax(axis=0)
+        self.counts = self.dataset.shape[0] - self.offsets - length
         self.counts[self.counts < 0] = 0  # 舍弃掉不足length + 1的数据
         self.total_counts = np.concatenate((np.asarray([0]), np.add.accumulate(self.counts)))
 
@@ -63,7 +65,7 @@ class LD2011_2014(Dataset):
 
     def __getitem__(self, index) -> T_co:
         col = search_sorted(self.total_counts, index)
-        row_offset = index - self.total_counts[col]
+        row_offset = index - self.total_counts[col] + self.offsets[col]
 
         return self.dataset[row_offset: row_offset + self.length, col], self.dataset[row_offset + self.length, col]
 
@@ -72,7 +74,8 @@ class LD2011_2014(Dataset):
             suggestion = 0
             for index in range(self.total_counts[-1]):
                 col = search_sorted(self.total_counts, index, suggestion=suggestion)
-                row_offset = index - self.total_counts[col]
+                row_offset = index - self.total_counts[col] + self.offsets[col]
+
                 suggestion = col
                 yield ld.dataset[row_offset: row_offset + self.length, col], \
                       ld.dataset[row_offset + self.length, col]
