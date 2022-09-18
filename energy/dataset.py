@@ -10,6 +10,7 @@ from itertools import accumulate
 
 
 # 返回sorted_list中的区间序号
+# sorted_list 描述了一些“左闭右开区间”的右边界，返回下表标k iff a_{k} <= x < a_k+1
 def search_sorted(sorted_list, x, suggestion=0):
     # for i, count in enumerate(sorted_list):
     #     if x < count:
@@ -22,7 +23,6 @@ def search_sorted(sorted_list, x, suggestion=0):
     if sorted_list[suggestion] <= x < sorted_list[suggestion + 1]:
         return suggestion
 
-    # sorted_list 描述了一些“左闭右开区间”的右边界，返回下表标k iff a_{k} <= x < a_k+1
     left, right = suggestion, sorted_list.shape[0] - 1
     while right - left > 1:
         middle = (left + right) // 2
@@ -38,6 +38,13 @@ def search_sorted(sorted_list, x, suggestion=0):
     return left
 
 
+# sorted_list 描述了一些“左闭右开区间”的右边界，返回下表标k iff a_{k} <= x < a_k+1
+def search_linear(sorted_list, x, suggestion=0):
+    while not sorted_list[suggestion] <= x < sorted_list[suggestion + 1]:
+        suggestion = suggestion + 1
+    return suggestion
+
+
 # 用于避免重复在内存中载入数据集
 dataset_buffered = dict()
 
@@ -50,10 +57,10 @@ class LD2011_2014(Dataset):
     def __init__(self, length, csv_file=r"dataset/LD2011_2014.csv", transform=None, size=370):
         self.transform = transform
         self.length = length
-        if csv_file not in dataset_buffered:
-            dataset_buffered[csv_file] = np.array(pd.read_csv(csv_file, usecols=range(1, size + 1), dtype="float32",
+        if "LD2011_2014" not in dataset_buffered:
+            dataset_buffered["LD2011_2014"] = np.array(pd.read_csv(csv_file, usecols=range(1, size + 1), dtype="float32",
                                                               delimiter=";", decimal=",").to_numpy(), order='F')
-        self.dataset = dataset_buffered[csv_file]
+        self.dataset = dataset_buffered["LD2011_2014"]
         # self.counts = np.where(self.dataset, 0, 1).sum(axis=0) - length
         self.offsets = (self.dataset != 0).argmax(axis=0)
         self.counts = self.dataset.shape[0] - self.offsets - length
@@ -73,7 +80,7 @@ class LD2011_2014(Dataset):
         def iterator(ld):
             suggestion = 0
             for index in range(self.total_counts[-1]):
-                col = search_sorted(self.total_counts, index, suggestion=suggestion)
+                col = search_linear(self.total_counts, index, suggestion=suggestion)
                 row_offset = index - self.total_counts[col] + self.offsets[col]
 
                 suggestion = col
@@ -81,4 +88,32 @@ class LD2011_2014(Dataset):
                       ld.dataset[row_offset + self.length, col]
 
         return iterator(self)
-        # return (self[i] for i in range(self.total_counts[-1]))
+
+
+class LD2011_2014_summary(Dataset):
+
+    """
+    length: 序列长度，length为不包含y的长度
+    """
+    def __init__(self, length, csv_file=r"dataset/LD2011_2014.csv", transform=None, size=370):
+        self.transform = transform
+        self.length = length
+        if "LD2011_2014_summary" not in dataset_buffered:
+            dataset_buffered["LD2011_2014_summary"] = np.array(pd.read_csv(csv_file, usecols=range(1, size + 1),
+                                                                           dtype="float32", delimiter=";", decimal=",").
+                                                               to_numpy(), order='F').sum(axis=1)
+        self.dataset = dataset_buffered["LD2011_2014_summary"]
+        # self.counts = np.where(self.dataset, 0, 1).sum(axis=0) - length
+        self.offsets = (self.dataset != 0).argmax(axis=0)
+        self.counts = self.dataset.shape[0] - self.offsets - length
+
+    def __len__(self):
+        return self.counts
+
+    def __getitem__(self, index) -> T_co:
+        row_offset = index + self.offsets
+
+        return self.dataset[row_offset: row_offset + self.length], self.dataset[row_offset + self.length]
+
+    def __iter__(self):
+        return (self[i] for i in range(len(self)))
