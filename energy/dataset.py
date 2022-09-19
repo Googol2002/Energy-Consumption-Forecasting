@@ -48,7 +48,7 @@ class LD2011_2014(Dataset):
     length: 序列长度，length为不包含y的长度
     """
 
-    def __init__(self, length, csv_file=r"dataset/LD2011_2014.csv", transform=None, size=370):
+    def __init__(self, length, csv_file=r"../dataset/LD2011_2014.csv", transform=None, size=370):
         self.transform = transform
         self.length = length
         if "LD2011_2014" not in dataset_buffered:
@@ -90,7 +90,7 @@ class LD2011_2014_summary(Dataset):
     length: 序列长度，length为不包含y的长度
     """
 
-    def __init__(self, length, csv_file=r"dataset/LD2011_2014.csv", transform=None, size=370):
+    def __init__(self, length, csv_file=r"../dataset/LD2011_2014.csv", transform=None, size=370):
         self.transform = transform
         self.length = length
         if "LD2011_2014_summary" not in dataset_buffered:
@@ -115,10 +115,11 @@ class LD2011_2014_summary(Dataset):
 
 
 RANDOM_SEED = 1023
+BATCH_SIZE = 128
 
 
 # X 成形于 [batch_size, length]
-def construct_dataloader(raw_dataset, batch_size=128,
+def construct_dataloader(raw_dataset, batch_size=BATCH_SIZE,
                          train_ratio=0.6, validation_ratio=0.2, test_ratio=0.2):
     if train_ratio + validation_ratio + test_ratio != 1:
         raise ValueError("The sum of train_ratio, validation_ratio and test_ratio doesn't equal to One.")
