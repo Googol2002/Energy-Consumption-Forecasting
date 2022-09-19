@@ -1,23 +1,17 @@
 from math import ceil
 
+import torch
 from torch.utils.data import Dataset, DataLoader
-from torch.utils.data.dataset import T_co
+from torch.utils.data.dataset import T_co, random_split
 
 import pandas as pd
 import numpy as np
-
-from itertools import accumulate
 
 
 # 返回sorted_list中的区间序号
 # sorted_list 描述了一些“左闭右开区间”的右边界，返回下表标k iff a_{k} <= x < a_k+1
 def search_sorted(sorted_list, x, suggestion=0):
-    # for i, count in enumerate(sorted_list):
-    #     if x < count:
-    #         return i
-
     # 更新为Binary Search
-
     if not (0 <= x < sorted_list[-1]):
         raise IndexError()
     if sorted_list[suggestion] <= x < sorted_list[suggestion + 1]:
@@ -58,8 +52,9 @@ class LD2011_2014(Dataset):
         self.transform = transform
         self.length = length
         if "LD2011_2014" not in dataset_buffered:
-            dataset_buffered["LD2011_2014"] = np.array(pd.read_csv(csv_file, usecols=range(1, size + 1), dtype="float32",
-                                                              delimiter=";", decimal=",").to_numpy(), order='F')
+            dataset_buffered["LD2011_2014"] = np.array(
+                pd.read_csv(csv_file, usecols=range(1, size + 1), dtype="float32",
+                            delimiter=";", decimal=",").to_numpy(), order='F')
         self.dataset = dataset_buffered["LD2011_2014"]
         # self.counts = np.where(self.dataset, 0, 1).sum(axis=0) - length
         self.offsets = (self.dataset != 0).argmax(axis=0)
@@ -91,10 +86,10 @@ class LD2011_2014(Dataset):
 
 
 class LD2011_2014_summary(Dataset):
-
     """
     length: 序列长度，length为不包含y的长度
     """
+
     def __init__(self, length, csv_file=r"dataset/LD2011_2014.csv", transform=None, size=370):
         self.transform = transform
         self.length = length
@@ -117,3 +112,25 @@ class LD2011_2014_summary(Dataset):
 
     def __iter__(self):
         return (self[i] for i in range(len(self)))
+
+
+RANDOM_SEED = 1023
+
+
+# X 成形于 [batch_size, length]
+def construct_dataloader(raw_dataset, batch_size=128,
+                         train_ratio=0.6, validation_ratio=0.2, test_ratio=0.2):
+    if train_ratio + validation_ratio + test_ratio != 1:
+        raise ValueError("The sum of train_ratio, validation_ratio and test_ratio doesn't equal to One.")
+
+    train_dataset, val_dataset, test_dataset = random_split(
+        dataset=raw_dataset,
+        lengths=[round(train_ratio * len(raw_dataset)),
+                 round(validation_ratio * len(raw_dataset)),
+                 len(raw_dataset) - round(train_ratio * len(raw_dataset)) -
+                 round(validation_ratio * len(raw_dataset))],
+        generator=torch.Generator().manual_seed(RANDOM_SEED)
+    )
+
+    return DataLoader(train_dataset, batch_size=batch_size), DataLoader(val_dataset, batch_size=batch_size), \
+           DataLoader(test_dataset, batch_size=batch_size)

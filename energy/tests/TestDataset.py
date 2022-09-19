@@ -3,7 +3,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 import seaborn as sns
 
-from energy.dataset import LD2011_2014, LD2011_2014_summary
+from energy.dataset import LD2011_2014, LD2011_2014_summary, construct_dataloader
 
 LENGTH = 1000
 
@@ -61,3 +61,15 @@ def test_ld2011_2014_summary():
     print("数据规模：{}".format(len(dataset)))
     plt.plot(np.asarray(range(0, LENGTH + 1)), valid_distribution)
     plt.show()
+
+
+def test_construct_dataloader():
+    dataset = LD2011_2014_summary(length=LENGTH,
+                                  csv_file=r"D:\Workspace\Energy-Consumption-Forecasting\dataset\LD2011_2014.csv",
+                                  size=10)
+    train, val, test = construct_dataloader(dataset, batch_size=128)
+
+    for X, y in test:
+        assert(X.shape[1] == LENGTH)
+
+    assert(abs((len(train) + len(val) + len(test)) * 128 - len(dataset)) < 3 * 128)
