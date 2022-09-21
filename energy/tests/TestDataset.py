@@ -24,7 +24,6 @@ def test_ld2011_2014_access():
 
 def test_ld2011_2014_distribution():
     dataset = LD2011_2014(length=LENGTH,
-                          csv_file=r"D:\Workspace\Energy-Consumption-Forecasting\dataset\LD2011_2014.csv",
                           size=50)
 
     valid_distribution = np.zeros(LENGTH + 1)

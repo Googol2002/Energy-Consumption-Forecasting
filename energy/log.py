@@ -19,3 +19,14 @@ def epoch_log(epoch, model_name, bias, model=None):
         torch.save(model.state_dict(), os.path.join(LOG_DIRECTORY, model_name,
                                                     r"Epoch({})-Bias({:.2f})-Date({}).pth".format(
                                                         epoch, bias, time_tag)))
+
+
+def log_printf(model_name, msg):
+    folder = os.path.exists(os.path.join(LOG_DIRECTORY, model_name))
+    if not folder:
+        os.makedirs(os.path.join(LOG_DIRECTORY, model_name))
+
+    with open(os.path.join(LOG_DIRECTORY, model_name, r"Date({}).txt"), mode='a') as log_file:
+        log_file.write(msg + "\n")
+
+    print(msg)

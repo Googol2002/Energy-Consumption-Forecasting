@@ -49,7 +49,7 @@ class LD2011_2014(Dataset):
     length: 序列长度，length为不包含y的长度
     """
 
-    def __init__(self, length, csv_file=r"../dataset/LD2011_2014.csv", transform=None, size=370):
+    def __init__(self, length, csv_file=r"dataset/LD2011_2014.csv", transform=None, size=370):
         self.transform = transform
         self.length = length
         if self.DATASET_KEY not in dataset_buffered:

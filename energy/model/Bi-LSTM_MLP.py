@@ -3,12 +3,13 @@ import torch
 from torch import nn
 
 from energy.dataset import LD2011_2014_summary, construct_dataloader
-from energy.log import epoch_log
+from energy.log import epoch_log, log_printf
 
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
 
 BATCH_SIZE = 512
+HIDDEN_SIZE = 512
 LENGTH = 96
 EPOCH_STEP = 100  # 超过*次数验证集性能仍未提升，终止
 VAL_STEP = 2  # 每经历*次epoch，跑一下验证集
@@ -47,9 +48,9 @@ class Bi_LSTM_MPL(nn.Module):
         # NOTICE：对于c_0，将其均值初始化在1处是十分必要的！
         c_0 = torch.randn(self.num_directions * self.num_layers, batch_size, self.hidden_size).to(device) + 1
 
-        output, _ = self.lstm(input_seq, (h_0, c_0))
+        output, (h_n, c_n) = self.lstm(input_seq, (h_0, c_0))
 
-        return self.mlp(output[:, -1, :]).squeeze()
+        return self.mlp(torch.cat([h_n[0], h_n[1]], 1)).squeeze()
 
 
 bias_fn = nn.L1Loss()
@@ -70,7 +71,7 @@ def val_loop(dataloader, model, loss_fn):
             bias += torch.sum(torch.abs(pred - y) / y).item()
 
     val_loss /= size
-    print(f"Val Error: \n Bias: {(100 * bias / size):>0.1f}%, Avg loss: {val_loss:>8f} \n")
+    log_printf("Bi-LSTM_MLP", f"Val Error: \n Bias: {(100 * bias / size):>0.1f}%, Avg loss: {val_loss:>8f} \n")
 
     return val_loss, bias / size
 
@@ -105,10 +106,10 @@ if __name__ == "__main__":
     train, val, test = construct_dataloader(dataset, batch_size=BATCH_SIZE)
     print(len(dataset))
 
-    predictor = Bi_LSTM_MPL(input_size=1, hidden_size=256, num_layers=1, output_size=1, batch_size=BATCH_SIZE)
+    predictor = Bi_LSTM_MPL(input_size=1, hidden_size=HIDDEN_SIZE, num_layers=1, output_size=1, batch_size=BATCH_SIZE)
 
     print('LSTM_MPL model:', predictor)
-    loss_function = nn.MSELoss()  # 加速优化
+    loss_function = nn.L1Loss()  # 加速优化
     adam = torch.optim.Adam(predictor.parameters(), lr=0.001, weight_decay=WEIGHT_DECAY)
 
     best_model = None
