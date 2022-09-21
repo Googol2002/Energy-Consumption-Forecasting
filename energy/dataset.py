@@ -44,6 +44,7 @@ dataset_buffered = dict()
 
 
 class LD2011_2014(Dataset):
+    DATASET_KEY = "LD2011_2014"
     """
     length: 序列长度，length为不包含y的长度
     """
@@ -51,16 +52,19 @@ class LD2011_2014(Dataset):
     def __init__(self, length, csv_file=r"../dataset/LD2011_2014.csv", transform=None, size=370):
         self.transform = transform
         self.length = length
-        if "LD2011_2014" not in dataset_buffered:
-            dataset_buffered["LD2011_2014"] = np.array(
+        if self.DATASET_KEY not in dataset_buffered:
+            dataset_buffered[self.DATASET_KEY] = np.array(
                 pd.read_csv(csv_file, usecols=range(1, size + 1), dtype="float32",
                             delimiter=";", decimal=",").to_numpy(), order='F')
-        self.dataset = dataset_buffered["LD2011_2014"]
+        self.dataset = dataset_buffered[self.DATASET_KEY]
         # self.counts = np.where(self.dataset, 0, 1).sum(axis=0) - length
         self.offsets = (self.dataset != 0).argmax(axis=0)
         self.counts = self.dataset.shape[0] - self.offsets - length
         self.counts[self.counts < 0] = 0  # 舍弃掉不足length + 1的数据
         self.total_counts = np.concatenate((np.asarray([0]), np.add.accumulate(self.counts)))
+
+        if transform is not None:
+            raise NotImplementedError("不支持transform")
 
     def __len__(self):
         return self.total_counts[-1]
@@ -86,6 +90,7 @@ class LD2011_2014(Dataset):
 
 
 class LD2011_2014_summary(Dataset):
+    DATASET_KEY = "LD2011_2014_summary"
     """
     length: 序列长度，length为不包含y的长度
     """
@@ -93,11 +98,11 @@ class LD2011_2014_summary(Dataset):
     def __init__(self, length, csv_file=r"../dataset/LD2011_2014.csv", transform=None, size=370):
         self.transform = transform
         self.length = length
-        if "LD2011_2014_summary" not in dataset_buffered:
-            dataset_buffered["LD2011_2014_summary"] = np.array(pd.read_csv(csv_file, usecols=range(1, size + 1),
-                                                                           dtype="float32", delimiter=";", decimal=",").
-                                                               to_numpy(), order='F').sum(axis=1)
-        self.dataset = dataset_buffered["LD2011_2014_summary"]
+        if self.DATASET_KEY not in dataset_buffered:
+            dataset_buffered[self.DATASET_KEY] = np.array(pd.read_csv(csv_file, usecols=range(1, size + 1),
+                                                                      dtype="float32", delimiter=";", decimal=",").
+                                                          to_numpy(), order='F').sum(axis=1)
+        self.dataset = dataset_buffered[self.DATASET_KEY]
         # self.counts = np.where(self.dataset, 0, 1).sum(axis=0) - length
         self.offsets = (self.dataset != 0).argmax(axis=0)
         self.counts = self.dataset.shape[0] - self.offsets - length
@@ -108,7 +113,11 @@ class LD2011_2014_summary(Dataset):
     def __getitem__(self, index) -> T_co:
         row_offset = index + self.offsets
 
-        return self.dataset[row_offset: row_offset + self.length], self.dataset[row_offset + self.length]
+        sample = self.dataset[row_offset: row_offset + self.length], self.dataset[row_offset + self.length]
+        if self.transform:
+            return self.transform(sample)
+        else:
+            return sample
 
     def __iter__(self):
         return (self[i] for i in range(len(self)))
