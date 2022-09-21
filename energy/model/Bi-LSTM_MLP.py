@@ -109,8 +109,8 @@ if __name__ == "__main__":
     predictor = Bi_LSTM_MPL(input_size=1, hidden_size=HIDDEN_SIZE, num_layers=1, output_size=1, batch_size=BATCH_SIZE)
 
     print('LSTM_MPL model:', predictor)
-    loss_function = nn.L1Loss()  # 加速优化
-    adam = torch.optim.Adam(predictor.parameters(), lr=0.001, weight_decay=WEIGHT_DECAY)
+    loss_function = nn.MSELoss()  # 加速优化
+    adam = torch.optim.Adam(predictor.parameters(), lr=0.01, weight_decay=WEIGHT_DECAY)
 
     best_model = None
     min_val_loss = 50000000000
