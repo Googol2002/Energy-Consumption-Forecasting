@@ -1,8 +1,10 @@
+import random
+
 import pytest
 import numpy as np
 import matplotlib.pyplot as plt
 
-from energy.dataset import LD2011_2014, LD2011_2014_summary, construct_dataloader
+from energy.dataset import LD2011_2014, LD2011_2014_summary, construct_dataloader, LD2011_2014_summary_by_day
 
 plt.rcParams["font.sans-serif"] = ["SimHei"]    # 设置字体
 plt.rcParams["axes.unicode_minus"] = False  # 该语句解决图像中的“-”负号的乱码问题
@@ -68,6 +70,24 @@ def test_ld2011_2014_summary():
     PLOT_LENGTH = 96 * 4
     ax1.plot(np.asarray(range(0, LENGTH + 1)), valid_distribution)
     ax2.plot(np.asarray(range(0, PLOT_LENGTH)), dataset[1000][0][:PLOT_LENGTH])
+    plt.show()
+
+
+def test_ld2011_2014_summary_by_day():
+    dataset = LD2011_2014_summary_by_day(length=4,
+                                         csv_file=r"D:\Workspace\Energy-Consumption-Forecasting\dataset\LD2011_2014.csv")
+
+    fig, axs = plt.subplots(2, 2, figsize=(12, 12))
+
+    print("数据规模：{}".format(len(dataset)))
+
+    index = random.randint(0, len(dataset))
+    fig.suptitle("第{}个Sample的四个连续周期".format(index))
+    axs[0][0].plot(np.asarray(range(0, 96)), dataset[index][0][0])
+    axs[0][1].plot(np.asarray(range(0, 96)), dataset[index][0][1])
+    axs[1][0].plot(np.asarray(range(0, 96)), dataset[index][0][2])
+    axs[1][1].plot(np.asarray(range(0, 96)), dataset[index][0][3])
+
     plt.show()
 
 

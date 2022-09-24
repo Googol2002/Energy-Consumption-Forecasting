@@ -140,7 +140,7 @@ class LD2011_2014_summary_by_day(Dataset):
                                                           to_numpy(), order='F').sum(axis=1)
         self.dataset = dataset_buffered[self.DATASET_KEY]
         self.offsets = (self.dataset != 0).argmax(axis=0)
-        self.counts = (self.dataset.shape[0] - self.offsets) / self.T - length
+        self.counts = (self.dataset.shape[0] - self.offsets) // self.T - length
 
     def __len__(self):
         return self.counts
@@ -150,7 +150,7 @@ class LD2011_2014_summary_by_day(Dataset):
 
         x, y = self.dataset[row_offset: row_offset + self.length * self.T], self.dataset[row_offset +
                                                                                          self.length * self.T]
-        x.reshape(self.length, self.T)
+        x = x.reshape(self.length, self.T)
         sample = x, y
 
         if self.transform:
