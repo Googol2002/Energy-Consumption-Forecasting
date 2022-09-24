@@ -123,6 +123,45 @@ class LD2011_2014_summary(Dataset):
         return (self[i] for i in range(len(self)))
 
 
+class LD2011_2014_summary_by_day(Dataset):
+    T = 96
+
+    DATASET_KEY = "LD2011_2014_summary_by_day"
+    """
+    length: 序列长度，length为不包含y的长度，T个单位为一个单位
+    """
+
+    def __init__(self, length, csv_file=r"../dataset/LD2011_2014.csv", transform=None, size=370):
+        self.transform = transform
+        self.length = length
+        if self.DATASET_KEY not in dataset_buffered:
+            dataset_buffered[self.DATASET_KEY] = np.array(pd.read_csv(csv_file, usecols=range(1, size + 1),
+                                                                      dtype="float32", delimiter=";", decimal=",").
+                                                          to_numpy(), order='F').sum(axis=1)
+        self.dataset = dataset_buffered[self.DATASET_KEY]
+        self.offsets = (self.dataset != 0).argmax(axis=0)
+        self.counts = (self.dataset.shape[0] - self.offsets) / self.T - length
+
+    def __len__(self):
+        return self.counts
+
+    def __getitem__(self, index) -> T_co:
+        row_offset = index * self.T + self.offsets
+
+        x, y = self.dataset[row_offset: row_offset + self.length * self.T], self.dataset[row_offset +
+                                                                                         self.length * self.T]
+        x.reshape(self.length, self.T)
+        sample = x, y
+
+        if self.transform:
+            return self.transform(sample)
+        else:
+            return sample
+
+    def __iter__(self):
+        return (self[i] for i in range(len(self)))
+
+
 RANDOM_SEED = 1023
 BATCH_SIZE = 128
 

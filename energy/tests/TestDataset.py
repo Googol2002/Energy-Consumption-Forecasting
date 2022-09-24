@@ -1,9 +1,11 @@
 import pytest
 import numpy as np
 import matplotlib.pyplot as plt
-import seaborn as sns
 
 from energy.dataset import LD2011_2014, LD2011_2014_summary, construct_dataloader
+
+plt.rcParams["font.sans-serif"] = ["SimHei"]    # 设置字体
+plt.rcParams["axes.unicode_minus"] = False  # 该语句解决图像中的“-”负号的乱码问题
 
 LENGTH = 1000
 
@@ -57,8 +59,15 @@ def test_ld2011_2014_summary():
         # 不能有超过99%的数据为0，不然视为读入了错误的数据集
         valid_distribution[np.where(x, 1, 0).sum()] = valid_distribution[np.where(x, 1, 0).sum()] + 1
 
+    fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(12, 12))
+    ax1.title.set_text("有效数据分布")
+    ax2.title.set_text("Sample展示(4天)")
+
     print("数据规模：{}".format(len(dataset)))
-    plt.plot(np.asarray(range(0, LENGTH + 1)), valid_distribution)
+
+    PLOT_LENGTH = 96 * 4
+    ax1.plot(np.asarray(range(0, LENGTH + 1)), valid_distribution)
+    ax2.plot(np.asarray(range(0, PLOT_LENGTH)), dataset[1000][0][:PLOT_LENGTH])
     plt.show()
 
 
