@@ -2,17 +2,17 @@ import numpy as np
 import torch
 from torch import nn
 
-from energy.dataset import LD2011_2014_summary, construct_dataloader
+from energy.dataset import LD2011_2014_summary, construct_dataloader, LD2011_2014_summary_by_day
 from energy.log import epoch_log, log_printf
 
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
 
-BATCH_SIZE = 512
+BATCH_SIZE = 128
 HIDDEN_SIZE = 512
-LENGTH = 96
-EPOCH_STEP = 100  # 超过*次数验证集性能仍未提升，终止
-VAL_STEP = 2  # 每经历*次epoch，跑一下验证集
+PERIOD = 96
+LENGTH = 30
+EPOCH_STEP = 400
 GRADIENT_NORM = 10
 WEIGHT_DECAY = 0.01
 
@@ -31,15 +31,13 @@ class Bi_LSTM_MPL(nn.Module):
         self.mlp = nn.Sequential(
             nn.Linear(self.hidden_size * 2, self.hidden_size),
             nn.ReLU(),
-            nn.Linear(self.hidden_size, 128),
+            nn.Linear(self.hidden_size, 256),
             nn.ReLU(),
-            nn.Linear(128, 64),
+            nn.Linear(256, 128),
             nn.ReLU(),
-            nn.Linear(64, 16),
+            nn.Linear(128, 128),
             nn.ReLU(),
-            nn.Linear(16, 4),
-            nn.ReLU(),
-            nn.Linear(4, 1)
+            nn.Linear(128, PERIOD)
         ).to(device)
 
     def forward(self, input_seq):
@@ -63,15 +61,14 @@ def val_loop(dataloader, model, loss_fn):
 
     with torch.no_grad():
         for X, y in dataloader:
-            X = X.reshape(-1, LENGTH, 1).to(device)
-            y = y.to(device)
+            X, y = X.to(device), y.to(device)
 
             pred = model(X)
             val_loss += loss_fn(pred, y).item()
             bias += torch.sum(torch.abs(pred - y) / y).item()
 
-    val_loss /= size
-    log_printf("Bi-LSTM_MLP", f"Val Error: \n Bias: {(100 * bias / size):>0.1f}%, Avg loss: {val_loss:>8f} \n")
+    val_loss /= (size * PERIOD)
+    log_printf("Bi-LSTM_MLP", f"Val Error: \n Bias: {(100 * bias / (size * PERIOD)):>0.1f}%, Avg loss: {val_loss:>8f} \n")
 
     return val_loss, bias / size
 
@@ -79,38 +76,36 @@ def val_loop(dataloader, model, loss_fn):
 def train_loop(dataloader, model, loss_fn, optimizer):
     size = len(dataloader.dataset)
     for batch, (X, y) in enumerate(dataloader):
-        X = X.reshape(-1, LENGTH, 1).to(device)
-        y = y.to(device)
+        X, y = X.to(device), y.to(device)
         # Compute prediction and loss
         pred = model(X)
         loss = loss_fn(pred, y)
 
-        # clip
-        nn.utils.clip_grad_norm_(model.parameters(), GRADIENT_NORM)
-
         # Backpropagation
         optimizer.zero_grad()
         loss.backward()
+        # clip
+        nn.utils.clip_grad_norm_(model.parameters(), GRADIENT_NORM)
         optimizer.step()
 
-        if batch % 10 == 0:
+        if batch % 4 == 0:
             loss, current = loss.item(), batch * len(X)
-            print(f"loss: {loss:>7f} Avg loss: {loss / X.shape[0] :>7f}  [{current:>5d}/{size:>5d}]")
+            print(f"loss: {loss:>7f} Avg loss: {loss / (X.shape[0] * PERIOD) :>7f}  [{current:>5d}/{size:>5d}]")
 
 
 if __name__ == "__main__":
-    dataset = LD2011_2014_summary(length=LENGTH,
-                                  csv_file=r"dataset/LD2011_2014.csv",
-                                  )
-    # transform=lambda t: ((t[0][::4] + t[0][1::4] + t[0][2::4] + t[0][3::4]) / 4, t[1])
+    dataset = LD2011_2014_summary_by_day(length=LENGTH,
+                                         csv_file=r"dataset/LD2011_2014.csv",
+                                         )
     train, val, test = construct_dataloader(dataset, batch_size=BATCH_SIZE)
     print(len(dataset))
 
-    predictor = Bi_LSTM_MPL(input_size=1, hidden_size=HIDDEN_SIZE, num_layers=1, output_size=1, batch_size=BATCH_SIZE)
+    predictor = Bi_LSTM_MPL(input_size=PERIOD, hidden_size=HIDDEN_SIZE, num_layers=1, output_size=PERIOD,
+                            batch_size=BATCH_SIZE)
 
-    print('LSTM_MPL model:', predictor)
-    loss_function = nn.MSELoss()  # 加速优化
-    adam = torch.optim.Adam(predictor.parameters(), lr=0.01, weight_decay=WEIGHT_DECAY)
+    print('Bi-LSTM_MLP_period model:', predictor)
+    loss_function = nn.MSELoss()    # 加速优化
+    adam = torch.optim.Adam(predictor.parameters(), lr=0.001, weight_decay=WEIGHT_DECAY)
 
     best_model = None
     min_val_loss = 50000000000
@@ -123,5 +118,5 @@ if __name__ == "__main__":
         validation_loss, bias = val_loop(val, predictor, loss_function)
         if validation_loss < min_val_loss:
             min_val_loss = validation_loss
-            epoch_log(epoch, "Bi-LSTM_MLP", bias, model=predictor)
+            # epoch_log(epoch, "Bi-LSTM_MLP", bias, model=predictor)
 

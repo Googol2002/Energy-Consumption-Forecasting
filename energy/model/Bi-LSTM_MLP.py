@@ -85,12 +85,11 @@ def train_loop(dataloader, model, loss_fn, optimizer):
         pred = model(X)
         loss = loss_fn(pred, y)
 
-        # clip
-        nn.utils.clip_grad_norm_(model.parameters(), GRADIENT_NORM)
-
         # Backpropagation
         optimizer.zero_grad()
         loss.backward()
+        # clip
+        nn.utils.clip_grad_norm_(model.parameters(), GRADIENT_NORM)
         optimizer.step()
 
         if batch % 10 == 0:

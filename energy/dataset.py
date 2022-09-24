@@ -148,8 +148,9 @@ class LD2011_2014_summary_by_day(Dataset):
     def __getitem__(self, index) -> T_co:
         row_offset = index * self.T + self.offsets
 
-        x, y = self.dataset[row_offset: row_offset + self.length * self.T], self.dataset[row_offset +
-                                                                                         self.length * self.T]
+        x, y = self.dataset[row_offset: row_offset + self.length * self.T], self.dataset[
+                                                                            row_offset + self.length * self.T:
+                                                                            row_offset + (self.length + 1) * self.T]
         x = x.reshape(self.length, self.T)
         sample = x, y
 
