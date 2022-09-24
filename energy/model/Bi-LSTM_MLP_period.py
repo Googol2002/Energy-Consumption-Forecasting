@@ -8,7 +8,7 @@ from energy.log import epoch_log, log_printf
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
 
-BATCH_SIZE = 128
+BATCH_SIZE = 16
 HIDDEN_SIZE = 512
 PERIOD = 96
 LENGTH = 30
@@ -17,7 +17,7 @@ GRADIENT_NORM = 10
 WEIGHT_DECAY = 0.01
 
 class Bi_LSTM_MPL(nn.Module):
-    def __init__(self, input_size, hidden_size, num_layers, output_size, batch_size):
+    def __init__(self, input_size, hidden_size, num_layers, output_size, batch_size, means):
         super().__init__()
         self.input_size = input_size
         self.hidden_size = hidden_size
@@ -39,6 +39,7 @@ class Bi_LSTM_MPL(nn.Module):
             nn.ReLU(),
             nn.Linear(128, PERIOD)
         ).to(device)
+        self.mlp[-1].bias = torch.nn.Parameter(torch.Tensor(means).to(device), requires_grad=False)
 
     def forward(self, input_seq):
         batch_size, seq_len = input_seq.shape[0], input_seq.shape[1]
@@ -52,6 +53,17 @@ class Bi_LSTM_MPL(nn.Module):
 
 
 bias_fn = nn.L1Loss()
+
+def check_gradient_norm(model):
+    total_norm = 0
+
+    for p in model.parameters():
+        if p.grad is not None:
+            param_norm = p.grad.detach().data.norm(2)
+            total_norm += param_norm.item() ** 2
+    total_norm = total_norm ** 0.5
+
+    print("Gradient norm: {:>7f}".format(total_norm))
 
 
 def val_loop(dataloader, model, loss_fn):
@@ -84,11 +96,12 @@ def train_loop(dataloader, model, loss_fn, optimizer):
         # Backpropagation
         optimizer.zero_grad()
         loss.backward()
+        check_gradient_norm(model)
         # clip
         nn.utils.clip_grad_norm_(model.parameters(), GRADIENT_NORM)
         optimizer.step()
 
-        if batch % 4 == 0:
+        if batch % 10 == 0:
             loss, current = loss.item(), batch * len(X)
             print(f"loss: {loss:>7f} Avg loss: {loss / (X.shape[0] * PERIOD) :>7f}  [{current:>5d}/{size:>5d}]")
 
@@ -100,8 +113,10 @@ if __name__ == "__main__":
     train, val, test = construct_dataloader(dataset, batch_size=BATCH_SIZE)
     print(len(dataset))
 
+    expectations, variances = dataset.statistics()
+
     predictor = Bi_LSTM_MPL(input_size=PERIOD, hidden_size=HIDDEN_SIZE, num_layers=1, output_size=PERIOD,
-                            batch_size=BATCH_SIZE)
+                            batch_size=BATCH_SIZE, means=expectations)
 
     print('Bi-LSTM_MLP_period model:', predictor)
     loss_function = nn.MSELoss()    # 加速优化

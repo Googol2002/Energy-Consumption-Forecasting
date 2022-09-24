@@ -88,6 +88,12 @@ def test_ld2011_2014_summary_by_day():
     axs[1][0].plot(np.asarray(range(0, 96)), dataset[index][0][2])
     axs[1][1].plot(np.asarray(range(0, 96)), dataset[index][0][3])
 
+    expectations, variances = dataset.statistics()
+    print("期望:")
+    print(expectations)
+    print("方差")
+    print(variances)
+
     plt.show()
 
 

@@ -162,6 +162,19 @@ class LD2011_2014_summary_by_day(Dataset):
     def __iter__(self):
         return (self[i] for i in range(len(self)))
 
+    def statistics(self):
+        expectations = np.zeros_like(self[0][1])
+        variances = np.zeros_like(self[0][1])
+
+        for x, y in self:
+            expectations += y
+            variances += y ** 2
+
+        expectations /= len(self)
+        variances = variances / len(self) - expectations
+
+        return expectations, variances
+
 
 RANDOM_SEED = 1023
 BATCH_SIZE = 128
