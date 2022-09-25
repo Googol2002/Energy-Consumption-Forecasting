@@ -22,6 +22,9 @@ def init_weights(layer):
         torch.nn.init.uniform_(layer.bias, 0, 2)
 
 
+# 十分重要.
+SCALE_FACTOR = 100000
+
 class Bi_LSTM_MPL(nn.Module):
     def __init__(self, input_size, hidden_size, num_layers, output_size, batch_size, means):
         super().__init__()
@@ -46,7 +49,7 @@ class Bi_LSTM_MPL(nn.Module):
             nn.Linear(128, PERIOD)
         ).to(device)
         self.mlp.apply(init_weights) # ReLU在负半轴会失活
-        self.mlp[-1].bias = torch.nn.Parameter(torch.Tensor(means).to(device), requires_grad=False)
+        self.mlp[-1].bias = torch.nn.Parameter(torch.Tensor(means).to(device) / SCALE_FACTOR)
 
     net = nn.Sequential(nn.Linear(2, 2), nn.Linear(2, 2))
     net.apply(init_weights)
@@ -57,9 +60,9 @@ class Bi_LSTM_MPL(nn.Module):
         # NOTICE：对于c_0，将其均值初始化在1处是十分必要的！
         c_0 = torch.randn(self.num_directions * self.num_layers, batch_size, self.hidden_size).to(device) + 1
 
-        output, (h_n, c_n) = self.lstm(input_seq, (h_0, c_0))
+        output, (h_n, c_n) = self.lstm(input_seq / SCALE_FACTOR, (h_0, c_0))
 
-        return self.mlp(torch.cat([h_n[0], h_n[1]], 1)).squeeze()
+        return self.mlp(torch.cat([h_n[0], h_n[1]], 1)).squeeze() * SCALE_FACTOR
 
 
 bias_fn = nn.L1Loss()
@@ -138,6 +141,7 @@ if __name__ == "__main__":
     val_step = 0
     print('train_sum=', len(train))
 
+    val_loop(val, predictor, loss_function);
     for epoch in range(EPOCH_STEP):
         train_loop(train, predictor, loss_function, adam)
         validation_loss, bias = val_loop(val, predictor, loss_function)

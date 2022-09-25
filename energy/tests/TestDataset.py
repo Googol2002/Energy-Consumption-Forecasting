@@ -83,16 +83,11 @@ def test_ld2011_2014_summary_by_day():
 
     index = random.randint(0, len(dataset))
     fig.suptitle("第{}个Sample的四个连续周期".format(index))
+
     axs[0][0].plot(np.asarray(range(0, 96)), dataset[index][0][0])
     axs[0][1].plot(np.asarray(range(0, 96)), dataset[index][0][1])
     axs[1][0].plot(np.asarray(range(0, 96)), dataset[index][0][2])
     axs[1][1].plot(np.asarray(range(0, 96)), dataset[index][0][3])
-
-    expectations, variances = dataset.statistics()
-    print("期望:")
-    print(expectations)
-    print("方差")
-    print(variances)
 
     plt.show()
 
