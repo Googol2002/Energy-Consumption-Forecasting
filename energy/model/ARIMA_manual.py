@@ -67,45 +67,52 @@ print(type(y),y.size,y.ndim)
 # print(adfuller(yy))
 
 #模型训练
-train_T=10
-test_T=16
+train_T=20
+test_T=25
 
+import time
 train, test = y[:train_T*24*4], y[train_T*24*4:test_T*24*4]
-#model = pm.auto_arima(train,test='adf',trace=True,seasonal=True,m=train_T)#
-model = SARIMAX(train, order=(2, 0, 1), seasonal_order=(1, 2, 1, train_T)).fit(disp=-1)
+
+#model = pm.auto_arima(train,test='adf',trace=True,seasonal=True,m=train_T,D=2,max_p=4,max_q=4)#（201，220）（601，211）
+model = SARIMAX(train, order=(2, 0, 1), seasonal_order=(1, 2, 1, train_T)).fit(disp=-1)#最佳参数（201，121）
 # model = pm.auto_arima(train, start_p=0, start_q=0,
 #                       seasonal=True, m=train_T,
-#                       information_criterion='aic',
+#                       information_criterion='aic',d=None,
 #                       start_P=0,start_Q=0,D=None,trace=True,
 #                       error_action='ignore',test='adf',
-#                       d=None,
 #                       suppress_warnings=True,stepwise=True)
-#model=sm.tsa.ARIMA(train,order=(2,0,0)).fit()
-#model=statsmodels.tsa.ar_model.AutoReg(train,2).fit()
-#print(model.summary())
+print(model.summary())#自动寻参结束后显示模型详细信息
 
-# 模型导出与载入
-import joblib
-# joblib.dump(model,'auto_arima.pkl')
-# model = joblib.load(model,'auto_arima.pkl')
+time_begin = time.time()
 
-# make your forecasts
-# predict N steps into the future
-test_axis = np.arange(test.shape[0])
-
+#auto用predict
 #forecasts = model.predict(test.shape[0])
+#手动用forecast
 forecasts = model.forecast(test.shape[0])
+time_end = time.time()
+print('predict time:', time_end - time_begin)
+
 
 #mse误差
 rmse = np.sqrt(mse(test, forecasts))
 print('RMSE: %.4f' % rmse)
 
-# Visualize the forecasts (blue=test, green=forecasts)
-#print(test.shape[0])
+#bias偏置
+bias=0
+for i in range(96):
+    bias+=abs(forecasts[i]-test[i])/test[i]
+bias/=test.shape[0]
+bias*=100
+print('bias: %.4f' % bias,'%')
+
+
+#可视化
 print(test.shape[0],forecasts.shape[0])
+test_axis = np.arange(test.shape[0])
 plt.plot(test_axis, test, c='blue',label='test')
 plt.plot(test_axis, forecasts, c='green',label='forecasts')
 plt.legend()
 #plt.grid(True) # 显示网格线
 #plt.savefig("ARIMA.png")
 plt.show()
+
