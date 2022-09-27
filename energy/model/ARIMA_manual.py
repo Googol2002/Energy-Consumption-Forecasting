@@ -67,14 +67,15 @@ print(type(y),y.size,y.ndim)
 # print(adfuller(yy))
 
 #模型训练
-train_T=20
+train_T=22
 test_T=25
+
 
 import time
 train, test = y[:train_T*24*4], y[train_T*24*4:test_T*24*4]
-
+time_begin = time.time()
 #model = pm.auto_arima(train,test='adf',trace=True,seasonal=True,m=train_T,D=2,max_p=4,max_q=4)#（201，220）（601，211）
-model = SARIMAX(train, order=(2, 0, 1), seasonal_order=(1, 2, 1, train_T)).fit(disp=-1)#最佳参数（201，121）
+model = SARIMAX(train, order=(2, 0, 1), seasonal_order=(1, 2, 1, train_T),).fit(disp=-1)#最佳参数（201，121）
 # model = pm.auto_arima(train, start_p=0, start_q=0,
 #                       seasonal=True, m=train_T,
 #                       information_criterion='aic',d=None,
@@ -82,7 +83,8 @@ model = SARIMAX(train, order=(2, 0, 1), seasonal_order=(1, 2, 1, train_T)).fit(d
 #                       error_action='ignore',test='adf',
 #                       suppress_warnings=True,stepwise=True)
 print(model.summary())#自动寻参结束后显示模型详细信息
-
+time_end = time.time()
+print('train time:', time_end - time_begin)
 time_begin = time.time()
 
 #auto用predict
@@ -96,18 +98,18 @@ print('predict time:', time_end - time_begin)
 #mse误差
 rmse = np.sqrt(mse(test, forecasts))
 print('RMSE: %.4f' % rmse)
-
+print(type(forecasts),type(test))
 #bias偏置
 bias=0
 for i in range(96):
     bias+=abs(forecasts[i]-test[i])/test[i]
-bias/=test.shape[0]
+bias/=96
 bias*=100
 print('bias: %.4f' % bias,'%')
 
 
 #可视化
-print(test.shape[0],forecasts.shape[0])
+#print(test.shape[0],forecasts.shape[0])
 test_axis = np.arange(test.shape[0])
 plt.plot(test_axis, test, c='blue',label='test')
 plt.plot(test_axis, forecasts, c='green',label='forecasts')
