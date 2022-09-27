@@ -5,8 +5,9 @@ from torch import nn
 from energy.dataset import LD2011_2014_summary, construct_dataloader, LD2011_2014_summary_by_day
 from energy.log import epoch_log, log_printf
 
-device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+# update to now: Bias: 7.458%, Avg loss: 241328.959207
 
+device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
 BATCH_SIZE = 16
 HIDDEN_SIZE = 512
@@ -48,7 +49,7 @@ class Bi_LSTM_MPL(nn.Module):
             nn.ReLU(),
             nn.Linear(128, PERIOD)
         ).to(device)
-        self.mlp.apply(init_weights) # ReLU在负半轴会失活
+        self.mlp.apply(init_weights)    # ReLU在负半轴会失活
         self.mlp[-1].bias = torch.nn.Parameter(torch.Tensor(means).to(device) / SCALE_FACTOR)
 
     net = nn.Sequential(nn.Linear(2, 2), nn.Linear(2, 2))
@@ -141,7 +142,7 @@ if __name__ == "__main__":
     val_step = 0
     print('train_sum=', len(train))
 
-    val_loop(val, predictor, loss_function);
+    val_loop(val, predictor, loss_function)
     for epoch in range(EPOCH_STEP):
         train_loop(train, predictor, loss_function, adam)
         validation_loss, bias = val_loop(val, predictor, loss_function)

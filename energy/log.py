@@ -33,7 +33,7 @@ def log_printf(model_name, msg):
     if not folder:
         os.makedirs(os.path.join(LOG_DIRECTORY, model_name))
 
-    with open(os.path.join(LOG_DIRECTORY, model_name, r"Date({}).txt".format(start_tag)), mode='a') as log_file:
+    with open(os.path.join(LOG_DIRECTORY, model_name, r"Test-Report-Date({}).txt".format(start_tag)), mode='a') as log_file:
         log_file.write(msg + "\n")
 
     print(msg)
