@@ -16,6 +16,7 @@ import statsmodels
 
 import statsmodels.api as sm
 from statsmodels.tsa.statespace.sarimax import SARIMAX
+from ARIMA_best import  forecast_bias
 from sklearn.metrics import mean_squared_error as mse
 sys.path.append('..')
 
@@ -67,8 +68,8 @@ print(type(y),y.size,y.ndim)
 # print(adfuller(yy))
 
 #模型训练
-train_T=22
-test_T=25
+train_T=40
+test_T=45
 
 
 import time
@@ -96,17 +97,16 @@ print('predict time:', time_end - time_begin)
 
 
 #mse误差
-rmse = np.sqrt(mse(test, forecasts))
-print('RMSE: %.4f' % rmse)
-print(type(forecasts),type(test))
+# rmse = np.sqrt(mse(test, forecasts))
+# print('RMSE: %.4f' % rmse)
+# print(type(forecasts),type(test))
 #bias偏置
-bias=0
-for i in range(96):
-    bias+=abs(forecasts[i]-test[i])/test[i]
-bias/=96
-bias*=100
-print('bias: %.4f' % bias,'%')
-
+# bias=0
+# for i in range(96):
+#     bias+=abs(forecasts[i]-test[i])/test[i]
+# bias*=0.96
+# print('bias: %.4f' % bias,'%')
+forecast_bias(train_T,forecasts,test)
 
 #可视化
 #print(test.shape[0],forecasts.shape[0])
