@@ -38,7 +38,7 @@ MEANS_SCALE_FACTOR = 100000
 VARIANCES_SCALE_FACTOR = 100000000
 
 class Bi_LSTM_MPL(nn.Module):
-    def __init__(self, input_size, hidden_size, num_layers, output_size, batch_size, means):
+    def __init__(self, input_size, hidden_size, num_layers, output_size, batch_size, means, variances):
         super().__init__()
         self.input_size = input_size
         self.hidden_size = hidden_size
@@ -76,6 +76,9 @@ class Bi_LSTM_MPL(nn.Module):
             nn.Linear(128, PERIOD)
         ).to(device)
         self.mlp_variances.apply(init_weights)  # ReLU在负半轴会失活
+        # self.mlp_variances[-1].bias = torch.nn.Parameter(torch.Tensor(variances).to(device) /
+        #                                                  (10 * VARIANCES_SCALE_FACTOR))
+
 
     def forward(self, input_seq):
         batch_size, seq_len = input_seq.shape[0], input_seq.shape[1]
@@ -131,7 +134,7 @@ def regression_display(model, sample):
 def val_loop(dataloader, model, loss_fn):
     size = len(dataloader.dataset)
     num_batches = len(dataloader)
-    val_loss, bias = 0, 0
+    val_loss, accuracy, within, utilization = 0, 0, 0, 0
 
     with torch.no_grad():
         for X, y in dataloader:
@@ -141,12 +144,17 @@ def val_loop(dataloader, model, loss_fn):
             val_loss += loss_fn(pred, y).item()
 
             means = pred[:, :, 0]
-            bias += torch.sum(torch.abs(means - y) / y).item()
+            variances = pred[:, :, 1]
+            accuracy += torch.sum(torch.abs(means - y) / y).item()
+            within += torch.sum(y <= means + 2 * torch.sqrt(variances))
+            utilization += torch.sum(1 - y / (means + 2 * torch.sqrt(variances)))
 
     val_loss /= (size * PERIOD)
-    log_printf("Bi-LSTM_MLP", f"Val Error: \n Accuracy: {(100 * bias / (size * PERIOD)):>0.3f}%, Avg loss: {val_loss:>8f} \n")
+    log_printf("Bi-LSTM_MLP", f"Val Error: \n Accuracy: {(100 * accuracy / (size * PERIOD)):>0.3f}%, Avg loss: {val_loss:>8f}")
+    log_printf("Bi-LSTM_MLP", f"Within the Power Generation: {(100 * within / (size * PERIOD)):>0.3f}%")
+    log_printf("Bi-LSTM_MLP", f"Utilization Rate:  {(100 * within / (size * PERIOD)):>0.3f}%\n")
 
-    return val_loss, bias / size
+    return val_loss, accuracy / (size * PERIOD)
 
 
 def train_loop(dataloader, model, loss_fn, optimizer):
@@ -177,10 +185,10 @@ if __name__ == "__main__":
     train, val, test = construct_dataloader(dataset, batch_size=BATCH_SIZE)
     print(len(dataset))
 
-    expectations, variances = dataset.statistics()
+    energy_expectations, energy_variances = dataset.statistics()
 
     predictor = Bi_LSTM_MPL(input_size=PERIOD, hidden_size=HIDDEN_SIZE, num_layers=1, output_size=PERIOD,
-                            batch_size=BATCH_SIZE, means=expectations)
+                            batch_size=BATCH_SIZE, means=energy_expectations, variances=energy_variances)
 
     print('Bi-LSTM_MLP_period model:', predictor)
     # loss_function = nn.MSELoss()    # 加速优化
