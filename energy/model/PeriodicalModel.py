@@ -151,8 +151,8 @@ def val_loop(dataloader, model, loss_fn):
 
     val_loss /= (size * PERIOD)
     log_printf("Bi-LSTM_MLP", f"Val Error: \n Accuracy: {(100 * accuracy / (size * PERIOD)):>0.3f}%, Avg loss: {val_loss:>8f}")
-    log_printf("Bi-LSTM_MLP", f"Within the Power Generation: {(100 * within / (size * PERIOD)):>0.3f}%")
-    log_printf("Bi-LSTM_MLP", f"Utilization Rate:  {(100 * within / (size * PERIOD)):>0.3f}%\n")
+    log_printf("Bi-LSTM_MLP", f" Within the Power Generation: {(100 * within / (size * PERIOD)):>0.3f}%")
+    log_printf("Bi-LSTM_MLP", f" Utilization Rate:  {(100 * within / (size * PERIOD)):>0.3f}%\n")
 
     return val_loss, accuracy / (size * PERIOD)
 
