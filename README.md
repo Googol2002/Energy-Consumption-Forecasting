@@ -16,7 +16,7 @@ Test Error:
 
 **Within the Power Generation** 计算公式为: $\mathbb{E}_{x,y}\ {\mathbb{I}\left[y \leq \mathbf{model(x).mean} + c\times \sqrt{\mathbf{model(x).variance}}\right]}$，其中 $c\equiv1$.
 
-**Utilization Rate **计算公式为：$\mathbb{E}_{x,y}\ {1-\frac{y}{\mathbf{model(x).mean} + c\times \sqrt{\mathbf{model(x).variance}}}}$，其中 $c\equiv1$.
+**Utilization Rate ** 计算公式为：$\mathbb{E}_{x,y}\ {1-\frac{y}{\mathbf{model(x).mean} + c\times \sqrt{\mathbf{model(x).variance}}}}$，其中 $c\equiv1$.
 
 ![Best Performance](https://github.com/Googol2002/Energy-Consumption-Forecasting/blob/main/figure/Performance-Date(2022-10-03%2016-24-03).png "Best Performance")
 
