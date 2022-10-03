@@ -1,9 +1,21 @@
+import os
+
+import torch
+
 from dataset import LD2011_2014_summary_by_day
 import matplotlib.pyplot as plt
 import numpy as np
+import random
 
-plt.rcParams["font.sans-serif"] = ["SimHei"]    # 设置字体
+from log import date_tag
+
+FIGURE_DIRECTORY = r"figure"
+
+device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+
+plt.rcParams["font.sans-serif"] = ["SimHei"]  # 设置字体
 plt.rcParams["axes.unicode_minus"] = False  # 该语句解决图像中的“-”负号的乱码问题
+
 
 def plot_ld2011_2014_summary_means_distribution():
     dataset = LD2011_2014_summary_by_day(length=4,
@@ -26,6 +38,39 @@ def plot_ld2011_2014_summary_means_distribution():
     print(expectations)
     print("方差")
     print(variances)
+
+
+def plot_forecasting_random_samples(model, dataset, factor, row=2, col=3, filename=None):
+    fig, axs = plt.subplots(row, col, figsize=(col * 6, row * 6))
+    fig.tight_layout(pad=5.0)
+    indexes = random.sample(range(len(dataset)), row * col)
+
+    for i in range(row):
+        for j in range(col):
+            index = i * col + j
+            x, y = dataset[indexes[index]]
+
+            with torch.no_grad():
+                pred = model(torch.unsqueeze(torch.Tensor(x).to(device), 0)).cpu().numpy()
+            x, y = x.reshape(-1), y.reshape(-1)
+            means_cup = pred[:, 0].reshape(-1)
+            variances_cup = pred[:, 1].reshape(-1)
+
+            axs[i][j].plot(range(y.shape[0]), y)
+            axs[i][j].plot(range(y.shape[0]), means_cup, color="red")
+            axs[i][j].fill_between(range(y.shape[0]), means_cup - factor * np.sqrt(variances_cup),
+                                   means_cup + factor * np.sqrt(variances_cup), facecolor='red', alpha=0.3)
+            axs[i][j].title.set_text("Val Sample[{}]".format(index))
+            axs[i][j].set_xlabel("Time")
+            axs[i][j].set_ylabel("Energy Consumption")
+
+    if filename is not None:
+        folder = os.path.exists(os.path.join(FIGURE_DIRECTORY))
+        if not folder:  # 判断是否存在文件夹如果不存在则创建为文件夹
+            os.makedirs(os.path.join(FIGURE_DIRECTORY))
+        plt.savefig(os.path.join(FIGURE_DIRECTORY, "{}-Date({}).png".format(filename, date_tag)), dpi=300)
+
+    plt.show()
 
 
 if __name__ == "__main__":

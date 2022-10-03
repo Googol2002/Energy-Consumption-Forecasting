@@ -6,9 +6,9 @@ import torch
 from torch import nn
 
 from energy.dataset import LD2011_2014_summary, construct_dataloader, LD2011_2014_summary_by_day
-from energy.log import epoch_log, log_printf
+from energy.log import log_printf, performance_log
 
-# update to now: Bias: 4.863%, Avg loss: 106454.605769
+from plot import plot_forecasting_random_samples
 
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
@@ -16,10 +16,12 @@ BATCH_SIZE = 16
 HIDDEN_SIZE = 512
 PERIOD = 96
 LENGTH = 30
-EPOCH_STEP = 10
+EPOCH_STEP = 300
+TOLERANCE = 20
 GRADIENT_NORM = 10
 WEIGHT_DECAY = 0.01
-VARIANCES_FACTOR = 1e-9
+VARIANCES_FACTOR = 2 * 1e-9
+LATITUDE_FACTOR = 1
 
 def customized_loss(outputs, labels):
     _means, _variances = outputs[:, :, 0], outputs[:, :, 1]
@@ -79,7 +81,6 @@ class Bi_LSTM_MPL(nn.Module):
         # self.mlp_variances[-1].bias = torch.nn.Parameter(torch.Tensor(variances).to(device) /
         #                                                  (10 * VARIANCES_SCALE_FACTOR))
 
-
     def forward(self, input_seq):
         batch_size, seq_len = input_seq.shape[0], input_seq.shape[1]
         h_0 = torch.randn(self.num_directions * self.num_layers, batch_size, self.hidden_size).to(device)
@@ -120,10 +121,8 @@ def regression_display(model, sample):
 
     axs[0].plot(range(y.shape[0]), y)
     axs[0].plot(range(y.shape[0]), means_cup, color="red")
-    # axs[0].plot(range(y.shape[0]), means_cup - 1 * np.sqrt(variances_cup), color="red", linestyle='-')
-    # axs[0].plot(range(y.shape[0]), means_cup + 1 * np.sqrt(variances_cup), color="red", linestyle='-')
-    axs[0].fill_between(range(y.shape[0]), means_cup - 1 * np.sqrt(variances_cup),
-                        means_cup + 1 * np.sqrt(variances_cup), facecolor='red', alpha=0.3)
+    axs[0].fill_between(range(y.shape[0]), means_cup - LATITUDE_FACTOR * np.sqrt(variances_cup),
+                        means_cup + LATITUDE_FACTOR * np.sqrt(variances_cup), facecolor='red', alpha=0.3)
 
     axs[1].plot(range(-x.shape[0], y.shape[0]), np.concatenate([x, y]))
     axs[1].plot(range(y.shape[0]), means_cup, color="red")
@@ -131,7 +130,7 @@ def regression_display(model, sample):
     plt.show()
 
 
-def val_loop(dataloader, model, loss_fn):
+def val_loop(dataloader, model, loss_fn, tag="Val"):
     size = len(dataloader.dataset)
     num_batches = len(dataloader)
     val_loss, accuracy, within, utilization = 0, 0, 0, 0
@@ -146,13 +145,13 @@ def val_loop(dataloader, model, loss_fn):
             means = pred[:, :, 0]
             variances = pred[:, :, 1]
             accuracy += torch.sum(torch.abs(means - y) / y).item()
-            within += torch.sum(y <= means + 2 * torch.sqrt(variances))
-            utilization += torch.sum(1 - y / (means + 2 * torch.sqrt(variances)))
+            within += torch.sum(y <= means + LATITUDE_FACTOR * torch.sqrt(variances))
+            utilization += torch.sum(y / (means + LATITUDE_FACTOR * torch.sqrt(variances)))
 
     val_loss /= (size * PERIOD)
-    log_printf("Bi-LSTM_MLP", f"Val Error: \n Accuracy: {(100 * accuracy / (size * PERIOD)):>0.3f}%, Avg loss: {val_loss:>8f}")
+    log_printf("Bi-LSTM_MLP", tag + " " + f"Error: \n Accuracy: {(100 * accuracy / (size * PERIOD)):>0.3f}%, Avg loss: {val_loss:>8f}")
     log_printf("Bi-LSTM_MLP", f" Within the Power Generation: {(100 * within / (size * PERIOD)):>0.3f}%")
-    log_printf("Bi-LSTM_MLP", f" Utilization Rate:  {(100 * within / (size * PERIOD)):>0.3f}%\n")
+    log_printf("Bi-LSTM_MLP", f" Utilization Rate:  {(100 * utilization / (size * PERIOD)):>0.3f}%\n")
 
     return val_loss, accuracy / (size * PERIOD)
 
@@ -168,7 +167,7 @@ def train_loop(dataloader, model, loss_fn, optimizer):
         # Backpropagation
         optimizer.zero_grad()
         loss.backward()
-        check_gradient_norm(model)
+        # check_gradient_norm(model)
         # clip
         nn.utils.clip_grad_norm_(model.parameters(), GRADIENT_NORM)
         optimizer.step()
@@ -191,25 +190,32 @@ if __name__ == "__main__":
                             batch_size=BATCH_SIZE, means=energy_expectations, variances=energy_variances)
 
     print('Bi-LSTM_MLP_period model:', predictor)
-    # loss_function = nn.MSELoss()    # 加速优化
+    # loss_function = nn.MSELoss()
     loss_function = customized_loss
     adam = torch.optim.Adam(predictor.parameters(), lr=0.001, weight_decay=WEIGHT_DECAY)
 
     best_model = None
     min_val_loss = 50000000000
-    epoch_step = 0
-    val_step = 0
+    tolerance = 0
     print('train_sum=', len(train))
 
     val_loop(val, predictor, loss_function)
     for epoch in range(EPOCH_STEP):
+        print("========EPOCH {}========\n".format(epoch))
         train_loop(train, predictor, loss_function, adam)
         validation_loss, bias = val_loop(val, predictor, loss_function)
+        tolerance += 1
         if validation_loss < min_val_loss:
             min_val_loss = validation_loss
             best_model = copy.deepcopy(predictor)
-            # epoch_log(epoch, "Bi-LSTM_MLP", bias, model=predictor)
+            tolerance = 0
+        if tolerance > TOLERANCE:
+            log_printf("Bi-LSTM_MLP", "Early stopped at epoch {}.\n".format(epoch))
+            break
 
     best_model.lstm.flatten_parameters()
-    regression_display(best_model, val.dataset[10])
+    performance_log("Bi-LSTM_MLP", "========Best Performance========\n", model=predictor)
+    val_loop(val, best_model, loss_function)
+    val_loop(test, best_model, loss_function, tag="Test")
+    plot_forecasting_random_samples(best_model, test.dataset, LATITUDE_FACTOR, filename="Performance")
 
