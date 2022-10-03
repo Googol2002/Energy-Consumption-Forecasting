@@ -149,11 +149,11 @@ def val_loop(dataloader, model, loss_fn, tag="Val"):
             utilization += torch.sum(y / (means + LATITUDE_FACTOR * torch.sqrt(variances)))
 
     val_loss /= (size * PERIOD)
-    log_printf("Bi-LSTM_MLP", tag + " " + f"Error: \n Accuracy: {(100 * accuracy / (size * PERIOD)):>0.3f}%, Avg loss: {val_loss:>8f}")
+    log_printf("Bi-LSTM_MLP", tag + " " + f"Error: \n Accuracy: {100 - (100 * accuracy / (size * PERIOD)):>0.3f}%, Avg loss: {val_loss:>8f}")
     log_printf("Bi-LSTM_MLP", f" Within the Power Generation: {(100 * within / (size * PERIOD)):>0.3f}%")
     log_printf("Bi-LSTM_MLP", f" Utilization Rate:  {(100 * utilization / (size * PERIOD)):>0.3f}%\n")
 
-    return val_loss, accuracy / (size * PERIOD)
+    return val_loss, 1 - accuracy / (size * PERIOD)
 
 
 def train_loop(dataloader, model, loss_fn, optimizer):
