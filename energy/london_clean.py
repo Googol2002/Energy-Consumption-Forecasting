@@ -10,7 +10,7 @@ import glob, os
 import random
 import datetime
 
-SIZE = 100  # 随机读取规模
+SIZE = 20  # 随机读取规模
 
 select_list = [random.randint(2, 5500) for i in range(SIZE)]  # 随机读取SIZE个文件
 select_file_list = [f"{i:0>5d}" for i in select_list]
@@ -41,6 +41,7 @@ df_merge[df_merge.columns[1]] = 0
 while (df_merge.shape[1] >= 3):
     df_merge[df_merge.columns[1]] = df_merge[df_merge.columns[1]].map(float) + \
                                     df_merge[df_merge.columns[-1]].map(float)
+    df_merge[df_merge.columns[1]]=df_merge[df_merge.columns[1]].apply(lambda x: '%.4f' % x)
     df_merge = df_merge.drop(df_merge.columns[-1], axis=1)
 
 
@@ -83,5 +84,5 @@ add_one_hot_month(df_merge)  # 添加月独热编码
 
 # 输出
 print(df_merge)
-# outputpath='../dataset/temp.csv'
-# df_merge.to_csv(outputpath,sep=',',index=False)
+outputpath='../dataset/example.csv'
+df_merge.to_csv(outputpath,sep=',',index=False)
