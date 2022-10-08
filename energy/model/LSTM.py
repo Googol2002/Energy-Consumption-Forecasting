@@ -14,7 +14,7 @@ import random
 LENGTH=960
 EPOCH_STEP=100#超过*次数验证集性能仍未提升，终止
 VAL_STEP=2#每经历*次epoch，跑一下验证集
-from energy.dataset import BATCH_SIZE
+from energy.dataset.electricity_load import BATCH_SIZE
 
 class LSTM(nn.Module):
     def __init__(self, input_size, hidden_size, num_layers, output_size, batch_size):

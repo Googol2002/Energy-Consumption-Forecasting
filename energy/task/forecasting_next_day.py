@@ -108,7 +108,7 @@ def train_loop(dataloader, model, loss_fn, optimizer):
             print(f"loss: {loss:>7f} Avg loss: {loss / (X.shape[0] * PERIOD) :>7f}  [{current:>5d}/{size:>5d}]")
 
 
-if __name__ == "__main__":
+def train_model():
     dataset = LD2011_2014_summary_by_day(length=LENGTH,
                                          csv_file=r"dataset/LD2011_2014.csv",
                                          )
@@ -150,3 +150,11 @@ if __name__ == "__main__":
     val_loop(val, best_model, loss_function)
     val_loop(test, best_model, loss_function, tag="Test")
     plot_forecasting_random_samples(best_model, test.dataset, LATITUDE_FACTOR, filename="Performance")
+
+
+def load_model():
+    pass
+
+
+if __name__ == "__main__":
+    train_model()
