@@ -1,9 +1,8 @@
-import numpy as np
 import torch
 from torch import nn
 
 from energy.dataset import LD2011_2014_summary, construct_dataloader
-from energy.log import epoch_log, log_printf
+from helper.log import epoch_log, log_printf
 
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 

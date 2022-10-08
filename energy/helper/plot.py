@@ -7,7 +7,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import random
 
-from log import date_tag
+from helper.log import date_tag
 
 FIGURE_DIRECTORY = r"figure"
 
@@ -19,7 +19,7 @@ plt.rcParams["axes.unicode_minus"] = False  # 该语句解决图像中的“-”
 
 def plot_ld2011_2014_summary_means_distribution():
     dataset = LD2011_2014_summary_by_day(length=4,
-                                         csv_file=r"D:\Workspace\Energy-Consumption-Forecasting\dataset\LD2011_2014.csv")
+                                         csv_file=r"/dataset/LD2011_2014.csv")
 
     fig, axs = plt.subplots(4, 1, figsize=(12, 16))
     fig.tight_layout(pad=5.0)
