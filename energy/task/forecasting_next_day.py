@@ -9,7 +9,7 @@ from energy.dataset import construct_dataloader, LD2011_2014_summary_by_day
 from helper.plot import plot_forecasting_random_samples
 from model.PeriodicalModel import PeriodicalModel, customized_loss
 
-from helper.log import log_printf, performance_log
+from helper import log_printf, performance_log, load_task_model, mute_log
 
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
@@ -63,7 +63,6 @@ def regression_display(model, sample):
 
 def val_loop(dataloader, model, loss_fn, tag="Val"):
     size = len(dataloader.dataset)
-    num_batches = len(dataloader)
     val_loss, accuracy, within, utilization = 0, 0, 0, 0
 
     with torch.no_grad():
@@ -108,6 +107,8 @@ def train_loop(dataloader, model, loss_fn, optimizer):
             print(f"loss: {loss:>7f} Avg loss: {loss / (X.shape[0] * PERIOD) :>7f}  [{current:>5d}/{size:>5d}]")
 
 
+loss_function = customized_loss
+
 def train_model():
     dataset = LD2011_2014_summary_by_day(length=LENGTH,
                                          csv_file=r"dataset/LD2011_2014.csv",
@@ -119,11 +120,10 @@ def train_model():
 
     predictor = PeriodicalModel(input_size=PERIOD, hidden_size=HIDDEN_SIZE, num_layers=1, output_size=PERIOD,
                                 batch_size=BATCH_SIZE, period=PERIOD,
-                                means=energy_expectations, variances=energy_variances)
+                                means=energy_expectations)
 
     print(TASK_ID + ' model:', predictor)
     # loss_function = nn.MSELoss()
-    loss_function = customized_loss
     adam = torch.optim.Adam(predictor.parameters(), lr=0.001, weight_decay=WEIGHT_DECAY)
 
     best_model = None
@@ -152,9 +152,22 @@ def train_model():
     plot_forecasting_random_samples(best_model, test.dataset, LATITUDE_FACTOR, filename="Performance")
 
 
-def load_model():
-    pass
+def test_model():
+    predictor = PeriodicalModel(input_size=PERIOD, hidden_size=HIDDEN_SIZE, num_layers=1, output_size=PERIOD,
+                                batch_size=BATCH_SIZE, period=PERIOD)
+    predictor.load_state_dict(load_task_model(TASK_ID))
+    predictor.eval()
+
+    dataset = LD2011_2014_summary_by_day(length=LENGTH,
+                                         csv_file=r"dataset/LD2011_2014.csv",
+                                         )
+    train, val, test = construct_dataloader(dataset, batch_size=BATCH_SIZE)
+    with mute_log():
+        val_loop(val, predictor, loss_function, tag="Val")
+        val_loop(test, predictor, loss_function, tag="Test")
+        plot_forecasting_random_samples(predictor, test.dataset, LATITUDE_FACTOR, filename="Performance")
 
 
 if __name__ == "__main__":
-    train_model()
+    test_model()
+    # train_model()

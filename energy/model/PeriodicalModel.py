@@ -22,7 +22,7 @@ MEANS_SCALE_FACTOR = 100000
 VARIANCES_SCALE_FACTOR = 100000000
 
 class PeriodicalModel(nn.Module):
-    def __init__(self, input_size, hidden_size, num_layers, output_size, batch_size, period, means, variances):
+    def __init__(self, input_size, hidden_size, num_layers, output_size, batch_size, period, means=None):
         super().__init__()
         self.input_size = input_size
         self.hidden_size = hidden_size
@@ -47,7 +47,8 @@ class PeriodicalModel(nn.Module):
             nn.Linear(128, period)
         ).to(device)
         self.mlp_means.apply(init_weights)    # ReLU在负半轴会失活
-        self.mlp_means[-1].bias = torch.nn.Parameter(torch.Tensor(means).to(device) / MEANS_SCALE_FACTOR)
+        if means is not None:
+            self.mlp_means[-1].bias = torch.nn.Parameter(torch.Tensor(means).to(device) / MEANS_SCALE_FACTOR)
         # 预测方差
         self.mlp_variances = nn.Sequential(
             nn.Linear(self.hidden_size * 2, self.hidden_size),
