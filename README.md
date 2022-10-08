@@ -16,7 +16,7 @@ Test Error:
 
 **Within the Power Generation** 计算公式为: $\mathbb{E}_{x,y}\ {\mathbb{I}\left[y \leq \mathbf{model(x).mean} + c\times \sqrt{\mathbf{model(x).variance}}\right]}$，其中 $c\equiv1$.
 
-**Utilization Rate** 计算公式为：$\mathbb{E}_{x,y}\ {1-\frac{y}{\mathbf{model(x).mean} + c\times \sqrt{\mathbf{model(x).variance}}}}$，其中 $c\equiv1$.
+**Utilization Rate** 计算公式为：$\mathbb{E}_{x,y}\ \left[{1-\frac{y}{\mathbf{model(x).mean} + c\times \sqrt{\mathbf{model(x).variance}}}}\right]$，其中 $c\equiv1$.
 
 ![Best Performance](https://github.com/Googol2002/Energy-Consumption-Forecasting/blob/main/figure/Performance-Date(2022-10-03%2016-24-03).png "Best Performance")
 
@@ -26,4 +26,13 @@ Test Error:
 
 ## 项目预期
 我们希望通过提高电力系统负荷预测的准确率，降低预测值与实际值之间波荡的方差，降低不必要的煤炭消耗，保护地球资源，减少温室气体排放。助力中国二氧化碳排放量于2030年前达到峰值，在2060年前实现碳中和。
+
+## 技术实现
+
+损失函数定义：
+$$
+\mathcal{L}(\theta)=\mathbb{E}_{x,y}\left[\frac{(\hat{y}-y)^2}{\hat{\sigma}^2}\right] + \alpha\times\sigma^2+\beta\times \|\theta\|_2\quad \\
+\hat{y} = model(x).mean\quad \hat{\sigma}^2=model(x).variance
+$$
+
 
