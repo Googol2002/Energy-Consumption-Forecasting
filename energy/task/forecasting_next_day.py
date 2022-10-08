@@ -151,6 +151,15 @@ def train_model():
     val_loop(test, best_model, loss_function, tag="Test")
     plot_forecasting_random_samples(best_model, test.dataset, LATITUDE_FACTOR, filename="Performance")
 
+    # 仅供测试
+    # best_model.load_state_dict(load_task_model(TASK_ID))
+    # val_loop(val, best_model, loss_function, tag="Val")
+    #
+    # second_model = PeriodicalModel(input_size=PERIOD, hidden_size=HIDDEN_SIZE, num_layers=1, output_size=PERIOD,
+    #                                batch_size=BATCH_SIZE, period=PERIOD)
+    # second_model.load_state_dict(load_task_model(TASK_ID))
+    # val_loop(val, second_model, loss_function, tag="Val")
+
 
 def test_model():
     predictor = PeriodicalModel(input_size=PERIOD, hidden_size=HIDDEN_SIZE, num_layers=1, output_size=PERIOD,
@@ -168,6 +177,8 @@ def test_model():
         plot_forecasting_random_samples(predictor, test.dataset, LATITUDE_FACTOR, filename="Performance")
 
 
+RANDOM_SEED = 10001
+torch.cuda.manual_seed(RANDOM_SEED)
 if __name__ == "__main__":
-    test_model()
-    # train_model()
+    # test_model()
+    train_model()

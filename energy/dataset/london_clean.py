@@ -36,7 +36,7 @@ class London_11_14(Dataset):
         select_list = [random.randint(2, 5500) for i in range(self.size)]  # 随机读取SIZE个文件
         select_file_list = [f"{i:0>5d}" for i in select_list]
 
-        LOG_DIRECTORY="../../london_clean"
+        LOG_DIRECTORY="dataset/london_clean"
         success_read_file = []
         for f in select_file_list:
             file_name = "cleaned_household_MAC0"+str(f) + ".csv"
