@@ -51,8 +51,6 @@ def log_printf(task_id, msg):
         log_file.write(msg + "\n")
 
 
-    
-
 regex_date = re.compile(r"Date\(([\d\- ]+?)\)\.pth")
 '''
 :parameter name: 如果为空的话，会默认加载最近生成的模型.
@@ -61,6 +59,8 @@ def load_task_model(task_id, name=None):
     if not name:
         model_names = [os.fsdecode(file) for file in os.listdir(os.path.join(LOG_DIRECTORY, task_id))
                        if os.fsdecode(file).endswith(".pth")]
+        if not model_names:
+            raise FileNotFoundError("测试或加载模型前请先训练.")
         model_dates = [datetime.strptime(regex_date.findall(name)[0], "%Y-%m-%d %H-%M-%S").timestamp()
                        for name in model_names]
         name = max(zip(model_dates, model_names), key=lambda t: t[0])[1]

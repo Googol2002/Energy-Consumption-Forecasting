@@ -5,7 +5,7 @@ import copy
 from matplotlib import pyplot as plt
 from torch import nn
 
-from energy.dataset import construct_dataloader, LD2011_2014_summary_by_day
+from dataset import construct_dataloader, LD2011_2014_summary_by_day
 from helper.plot import plot_forecasting_random_samples
 from model.PeriodicalModel import PeriodicalModel, customized_loss
 
