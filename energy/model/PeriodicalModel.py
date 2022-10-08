@@ -3,10 +3,8 @@ from torch import nn
 
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
-GRADIENT_NORM = 10
-WEIGHT_DECAY = 0.01
-VARIANCES_FACTOR = 2 * 1e-9
 
+VARIANCES_FACTOR = 2 * 1e-9
 def customized_loss(outputs, labels):
     _means, _variances = outputs[:, :, 0], outputs[:, :, 1]
 
@@ -23,7 +21,7 @@ def init_weights(layer):
 MEANS_SCALE_FACTOR = 100000
 VARIANCES_SCALE_FACTOR = 100000000
 
-class Bi_LSTM_MPL(nn.Module):
+class PeriodicalModel(nn.Module):
     def __init__(self, input_size, hidden_size, num_layers, output_size, batch_size, period, means, variances):
         super().__init__()
         self.input_size = input_size

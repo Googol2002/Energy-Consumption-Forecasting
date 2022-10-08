@@ -1,3 +1,4 @@
+import numpy as np
 import torch
 import copy
 
@@ -6,12 +7,14 @@ from torch import nn
 
 from energy.dataset import construct_dataloader, LD2011_2014_summary_by_day
 from helper.plot import plot_forecasting_random_samples
-from model.PeriodicalModel import Bi_LSTM_MPL, customized_loss
+from model.PeriodicalModel import PeriodicalModel, customized_loss
 
 from helper.log import log_printf, performance_log
 
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
+GRADIENT_NORM = 10
+WEIGHT_DECAY = 0.01
 BATCH_SIZE = 16
 HIDDEN_SIZE = 512
 PERIOD = 96
@@ -19,6 +22,8 @@ LENGTH = 30
 EPOCH_STEP = 300
 TOLERANCE = 20
 LATITUDE_FACTOR = 1
+
+TASK_ID = "ForecastingNextDay"
 
 bias_fn = nn.L1Loss()
 
@@ -75,11 +80,11 @@ def val_loop(dataloader, model, loss_fn, tag="Val"):
             utilization += torch.sum(y / (means + LATITUDE_FACTOR * torch.sqrt(variances)))
 
     val_loss /= (size * PERIOD)
-    log_printf("Bi-LSTM_MLP", tag + " " + f"Error: \n Accuracy: {100 - (100 * accuracy / (size * PERIOD)):>0.3f}%, Avg loss: {val_loss:>8f}")
-    log_printf("Bi-LSTM_MLP", f" Within the Power Generation: {(100 * within / (size * PERIOD)):>0.3f}%")
-    log_printf("Bi-LSTM_MLP", f" Utilization Rate:  {(100 * utilization / (size * PERIOD)):>0.3f}%\n")
+    log_printf(TASK_ID, tag + " " + f"Error: \n Accuracy: {100 - (100 * accuracy / (size * PERIOD)):>0.3f}%, Avg loss: {val_loss:>8f}")
+    log_printf(TASK_ID, f" Within the Power Generation: {(100 * within / (size * PERIOD)):>0.3f}%")
+    log_printf(TASK_ID, f" Utilization Rate:  {(100 * utilization / (size * PERIOD)):>0.3f}%\n")
 
-    return val_loss, 1 - accuracy / (size * period)
+    return val_loss, 1 - accuracy / (size * PERIOD)
 
 
 def train_loop(dataloader, model, loss_fn, optimizer):
@@ -112,10 +117,11 @@ if __name__ == "__main__":
 
     energy_expectations, energy_variances = dataset.statistics()
 
-    predictor = Bi_LSTM_MPL(input_size=PERIOD, hidden_size=HIDDEN_SIZE, num_layers=1, output_size=PERIOD,
-                            batch_size=BATCH_SIZE, means=energy_expectations, variances=energy_variances)
+    predictor = PeriodicalModel(input_size=PERIOD, hidden_size=HIDDEN_SIZE, num_layers=1, output_size=PERIOD,
+                                batch_size=BATCH_SIZE, period=PERIOD,
+                                means=energy_expectations, variances=energy_variances)
 
-    print('Bi-LSTM_MLP_period model:', predictor)
+    print(TASK_ID + ' model:', predictor)
     # loss_function = nn.MSELoss()
     loss_function = customized_loss
     adam = torch.optim.Adam(predictor.parameters(), lr=0.001, weight_decay=WEIGHT_DECAY)
@@ -136,11 +142,11 @@ if __name__ == "__main__":
             best_model = copy.deepcopy(predictor)
             tolerance = 0
         if tolerance > TOLERANCE:
-            log_printf("Bi-LSTM_MLP", "Early stopped at epoch {}.\n".format(epoch))
+            log_printf(TASK_ID, "Early stopped at epoch {}.\n".format(epoch))
             break
 
     best_model.lstm.flatten_parameters()
-    performance_log("Bi-LSTM_MLP", "========Best Performance========\n", model=predictor)
+    performance_log(TASK_ID, "========Best Performance========\n", model=predictor)
     val_loop(val, best_model, loss_function)
     val_loop(test, best_model, loss_function, tag="Test")
     plot_forecasting_random_samples(best_model, test.dataset, LATITUDE_FACTOR, filename="Performance")
