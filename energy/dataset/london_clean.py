@@ -46,15 +46,15 @@ class London_11_14(Dataset):
                 success_read_file.append(pd.read_csv(file_name, header=0, usecols=[4, 3], decimal=","))  # 读取每个表格
 
         # 初始化求和表
-        df_merge = pd.read_csv("../../london_clean/cleaned_household_MAC000002.csv",
-                               header=0, usecols=[4, 3], decimal=",")
+        file_name = "cleaned_household_MAC000002.csv"
+        file_name = os.path.join(LOG_DIRECTORY, file_name).replace('\\', '/')
+        df_merge = pd.read_csv(file_name,header=0, usecols=[4, 3], decimal=",")
 
         # 合并
         values = ['_' + str(i) for i in range(6000)]  # 用于merge中重复列的重命名
         for i in range(len(success_read_file)):
             df_merge = pd.merge(df_merge, success_read_file[i], how='outer', on='DateTime', sort=True,
-                                suffixes=('', values[i])).replace(
-                np.nan, 0)
+                                suffixes=('', values[i])).replace(np.nan, 0)
         df_merge[df_merge.columns[1]] = 0
         print(df_merge)
 
