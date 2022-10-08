@@ -18,6 +18,7 @@ def init_weights(layer):
 
 
 # 十分重要.
+# TODO: 或许与具体Task有关，需要更改到Task包下
 MEANS_SCALE_FACTOR = 100000
 VARIANCES_SCALE_FACTOR = 100000000
 

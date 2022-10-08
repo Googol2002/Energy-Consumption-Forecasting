@@ -21,8 +21,8 @@ dataset = London_11_14(train_l=10, test_l=1, size=20)
 print(dataset.data_all)
 print(dataset.dataset)
 print(dataset.days)
-print(dataset.__len__())
-print(dataset.__getitem__(dataset.__len__() - 1))
+print(len(dataset))
+print(dataset[len(dataset) - 1])
 """
     __getitem__()传参范围range(dataset.__len__())
     越界会assert
