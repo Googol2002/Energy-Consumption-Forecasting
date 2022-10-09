@@ -40,10 +40,11 @@ class London_11_14(Dataset):
 
         LOG_DIRECTORY = "dataset/london_clean"
         success_read_file = []
-        for f in select_file_list:
+        for index, f in enumerate(select_file_list):
             file_name = "cleaned_household_MAC0" + str(f) + ".csv"
             file_name = os.path.join(LOG_DIRECTORY, file_name).replace('\\', '/')
-            print(file_name)
+            if index % 100 == 0:
+                print("Loading...\t[{}/{}]".format(index, len(select_file_list)))
             if os.path.exists(file_name):
                 success_read_file.append(pd.read_csv(file_name, header=0, usecols=[4, 3], decimal=","))  # 读取每个表格
 

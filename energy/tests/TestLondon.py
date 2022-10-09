@@ -9,7 +9,7 @@ import pytest
 import numpy as np
 import matplotlib
 import matplotlib.pyplot as plt
-matplotlib.use('TkAgg')
+# matplotlib.use('Agg')
 
 from energy.dataset.london_clean import London_11_14
 
@@ -31,12 +31,12 @@ print(dataset[len(dataset)-1])
     __getitem__()传参范围range(dataset.__len__())
     越界会assert
 """
-START=300
+START=395
 END=400
 dataset_axis = np.arange(dataset.dataset.shape[0])
 plt.plot(dataset_axis[48*START:48*END], dataset.dataset[48*START:48*END], c='blue', label='X')
 
 plt.legend()
-    # plt.grid(True) # 显示网格线
-    # plt.savefig("ARIMA.png")
+# plt.grid(True) # 显示网格线
+# plt.savefig("ARIMA.png")
 plt.show()
