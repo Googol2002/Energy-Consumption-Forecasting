@@ -7,11 +7,13 @@
 import random
 import pytest
 import numpy as np
+import matplotlib
 import matplotlib.pyplot as plt
+matplotlib.use('TkAgg')
 
 from energy.dataset.london_clean import London_11_14
 
-dataset = London_11_14(train_l=5, test_l=1, size=30)
+dataset = London_11_14(train_l=5, test_l=1, size=50)
 """
     train_l：训练集天数
     test_l：测试集天数
@@ -29,3 +31,10 @@ print(dataset[len(dataset)-1])
     __getitem__()传参范围range(dataset.__len__())
     越界会assert
 """
+dataset_axis = np.arange(dataset.dataset.shape[0])
+plt.plot(dataset_axis, dataset.dataset, c='blue', label='X')
+
+plt.legend()
+    # plt.grid(True) # 显示网格线
+    # plt.savefig("ARIMA.png")
+plt.show()
