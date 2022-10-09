@@ -39,7 +39,6 @@ class London_11_14(Dataset):
         select_file_list = [f"{i:0>5d}" for i in select_list]
 
         LOG_DIRECTORY = "dataset/london_clean"
-        #LOG_DIRECTORY = "../../london_clean"
         success_read_file = []
         for f in select_file_list:
             file_name = "cleaned_household_MAC0" + str(f) + ".csv"
@@ -59,13 +58,12 @@ class London_11_14(Dataset):
             df_merge = pd.merge(df_merge, success_read_file[i], how='outer', on='DateTime', sort=True,
                                 suffixes=('', values[i])).replace(np.nan, 0)
         df_merge[df_merge.columns[1]] = 0
-        print(df_merge)
+        #print(df_merge)
 
         # 求和
         while (df_merge.shape[1] >= 3):
-            df_merge[df_merge.columns[1]] = df_merge[df_merge.columns[1]].map(float) + \
-                                            df_merge[df_merge.columns[-1]].map(float)
-            df_merge[df_merge.columns[1]] = df_merge[df_merge.columns[1]].apply(lambda x: '%.4f' % x)
+            df_merge[df_merge.columns[1]] = df_merge[df_merge.columns[1]].astype(float) + \
+                                            df_merge[df_merge.columns[-1]].astype(float)
             df_merge = df_merge.drop(df_merge.columns[-1], axis=1)
 
         # 添加周&月独热编码
@@ -103,14 +101,13 @@ class London_11_14(Dataset):
 
         self.data_all = df_merge
         self.data_only = df_merge[df_merge.columns[1]]  # 只保留用电量数据
-        self.dataset = np.array(self.data_only.values.tolist())
+        self.dataset = np.array(self.data_only.values.tolist()).astype("float32")
         self.data_week = np.array(self.data_all[self.data_all.columns[2]].values.tolist())
         self.data_month = np.array(self.data_all[self.data_all.columns[3]].values.tolist())
         self.days = int(self.data_only.shape[0] / 48)
         self.counts = self.days - test_l - train_l + 1  # (X,y)总行数
 
         # 输出
-        # print(df_merge)
         # outputpath='../../dataset/example.csv'
         # df_merge.to_csv(outputpath,sep=',',index=False)
 
@@ -125,12 +122,12 @@ class London_11_14(Dataset):
         x = x.reshape(self.train_l, 48)
         y = y.reshape(self.test_l, 48)
         x_1 = np.append(self.data_week[row_offset: row_offset + self.train_l * 48:48],
-                        self.data_month[row_offset: row_offset + self.train_l * 48:48],axis=1)
+                        self.data_month[row_offset: row_offset + self.train_l * 48:48], axis=1)
 
-        y_1 =np.append(self.data_week[row_offset + self.train_l * 48: row_offset + (self.train_l + self.test_l) * 48:48],
-                        self.data_month[row_offset + self.train_l * 48: row_offset + (self.train_l + self.test_l) * 48:48],axis=1)
+        y_1 = np.append(
+            self.data_week[row_offset + self.train_l * 48: row_offset + (self.train_l + self.test_l) * 48:48],
+            self.data_month[row_offset + self.train_l * 48: row_offset + (self.train_l + self.test_l) * 48:48], axis=1)
 
         x_1 = x_1.reshape(self.train_l, 19)
         y_1 = y_1.reshape(self.test_l, 19)
-        return x, y,x_1,y_1
-
+        return x, y, x_1, y_1
