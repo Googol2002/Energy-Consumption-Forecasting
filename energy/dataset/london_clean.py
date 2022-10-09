@@ -39,6 +39,7 @@ class London_11_14(Dataset):
         select_file_list = [f"{i:0>5d}" for i in select_list]
 
         LOG_DIRECTORY = "dataset/london_clean"
+        #LOG_DIRECTORY = "../../london_clean"
         success_read_file = []
         for f in select_file_list:
             file_name = "cleaned_household_MAC0" + str(f) + ".csv"
@@ -133,10 +134,3 @@ class London_11_14(Dataset):
         y_1 = y_1.reshape(self.test_l, 19)
         return x, y,x_1,y_1
 
-dataset = London_11_14(train_l=5, test_l=1, size=5)
-"""
-    train_l：训练集天数
-    test_l：测试集天数
-    总天数约800+
-    size：随机可重复抽取样本的个数，可修改范围：10~5498
-"""
