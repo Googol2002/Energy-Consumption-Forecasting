@@ -10,6 +10,7 @@ import glob, os
 import random
 import datetime
 from torch.utils.data import Dataset, DataLoader
+import time
 
 """
 最后的输出格式：X, y,X_1,y_1
@@ -40,33 +41,52 @@ class London_11_14(Dataset):
 
         LOG_DIRECTORY = "dataset/london_clean"
         success_read_file = []
-        for index, f in enumerate(select_file_list):
+        t_begin = time.time()
+        for f in select_file_list:
             file_name = "cleaned_household_MAC0" + str(f) + ".csv"
             file_name = os.path.join(LOG_DIRECTORY, file_name).replace('\\', '/')
-            if index % 100 == 0:
-                print("Loading...\t[{}/{}]".format(index, len(select_file_list)))
+            # print(file_name)
             if os.path.exists(file_name):
-                success_read_file.append(pd.read_csv(file_name, header=0, usecols=[4, 3], decimal=","))  # 读取每个表格
+                df_temp = pd.read_csv(file_name, header=0, usecols=[4, 3], decimal=",")
+                df_temp[df_temp.columns[-1]] = df_temp[df_temp.columns[-1]].astype(float)
+                if df_temp.shape[0] > 20000:
+                    success_read_file.append(df_temp)  # 读取每个表格
+        # print("success read:",len(success_read_file))
+        t_end = time.time()
+        # print("time for read:", t_end - t_begin)
 
         # 初始化求和表
         file_name = "cleaned_household_MAC000002.csv"
         file_name = os.path.join(LOG_DIRECTORY, file_name).replace('\\', '/')
         df_merge = pd.read_csv(file_name, header=0, usecols=[4, 3], decimal=",")
+        # print(df_merge)
 
         # 合并
+        t_begin = time.time()
         values = ['_' + str(i) for i in range(6000)]  # 用于merge中重复列的重命名
         for i in range(len(success_read_file)):
             df_merge = pd.merge(df_merge, success_read_file[i], how='outer', on='DateTime', sort=True,
                                 suffixes=('', values[i])).replace(np.nan, 0)
         df_merge[df_merge.columns[1]] = 0
-        #print(df_merge)
+        self.before_sum = df_merge
+        t_end = time.time()
+        # print("time for merge:", t_end - t_begin)
+        # print(df_merge)
 
         # 求和
-        while (df_merge.shape[1] >= 3):
-            df_merge[df_merge.columns[1]] = df_merge[df_merge.columns[1]].astype(float) + \
-                                            df_merge[df_merge.columns[-1]].astype(float)
-            df_merge = df_merge.drop(df_merge.columns[-1], axis=1)
+        t_begin = time.time()
+        df_merge['sum'] = df_merge.sum(axis=1, numeric_only=True)
+        df_merge = df_merge.drop(df_merge.columns[1:-1], axis=1)
+        t_end = time.time()
 
+        # print("time for sum:",t_end-t_begin)
+        # t_begin = time.time()
+        # while (df_merge.shape[1] >= 3):
+        #     df_merge[df_merge.columns[1]] = df_merge[df_merge.columns[1]] + \
+        #                                     df_merge[df_merge.columns[-1]]
+        #     df_merge = df_merge.drop(df_merge.columns[-1], axis=1)
+        # t_end = time.time()
+        # print("time for sum:", t_end - t_begin)
         # 添加周&月独热编码
         def get_one_hot(index, size):
             '''
@@ -105,6 +125,97 @@ class London_11_14(Dataset):
         self.dataset = np.array(self.data_only.values.tolist()).astype("float32")
         self.data_week = np.array(self.data_all[self.data_all.columns[2]].values.tolist())
         self.data_month = np.array(self.data_all[self.data_all.columns[3]].values.tolist())
+        self.days = int(self.data_only.shape[0] / 48)
+        self.counts = self.days - test_l - train_l + 1  # (X,y)总行数
+
+        # 输出
+        # outputpath='../../dataset/example.csv'
+        # df_merge.to_csv(outputpath,sep=',',index=False)
+
+    def __len__(self):
+        return self.counts
+
+    def __getitem__(self, index):
+        assert (index < self.__len__())
+        row_offset = index * 48
+        x, y = self.dataset[row_offset: row_offset + self.train_l * 48], \
+               self.dataset[row_offset + self.train_l * 48: row_offset + (self.train_l + self.test_l) * 48]
+        x = x.reshape(self.train_l, 48)
+        y = y.reshape(self.test_l, 48)
+        x_1 = np.append(self.data_week[row_offset: row_offset + self.train_l * 48:48],
+                        self.data_month[row_offset: row_offset + self.train_l * 48:48], axis=1)
+
+        y_1 = np.append(
+            self.data_week[row_offset + self.train_l * 48: row_offset + (self.train_l + self.test_l) * 48:48],
+            self.data_month[row_offset + self.train_l * 48: row_offset + (self.train_l + self.test_l) * 48:48], axis=1)
+
+        x_1 = x_1.reshape(self.train_l, 19)
+        y_1 = y_1.reshape(self.test_l, 19)
+        return x, y, x_1, y_1
+
+
+class London_11_14_random_select(Dataset):
+    """
+    :param df:一次读取，多次抽取，在类外读取后传入类
+    :param size: 随机抽取的用户数量，上限5068
+    """
+
+    def __init__(self, df, train_l=Train_length, test_l=Test_length, size=SIZE):
+
+        # 添加周&月独热编码
+        def get_one_hot(index, size):
+            '''
+            获得一个one-hot的编码
+            index:编码值
+            size:编码长度
+            '''
+            one_hot = [0 for _ in range(1, size + 1)]
+            one_hot[index - 1] = 1
+            return one_hot
+
+        def add_one_hot_week(df):
+            week = list(df['DateTime'])
+            Week = []
+            for i in week:
+                a = int(i[0:4])
+                b = int(i[5:7])
+                c = int(i[8:10])
+                week_num = datetime.date(a, b, c).isoweekday()
+                Week.append(get_one_hot(week_num, 7))
+            df['Week'] = Week
+
+        def add_one_hot_month(df):
+            month = list(df['DateTime'])
+            Month = []
+            for i in month:
+                j = int(i[5:7])
+                Month.append(get_one_hot(j, 12))
+            df['Month'] = Month
+
+        self.train_l = train_l
+        self.test_l = test_l
+        self.size = size
+        # test:
+        # self.df=London_11_14(train_l=5, test_l=1, size=20).before_sum
+        # print(self.df)
+
+        self.df = df
+        self.init_columns = self.df.shape[1] - 1
+        self.delete_columns = self.init_columns - self.size
+
+        # 随机选取
+        assert (self.size < self.init_columns)
+        delete_list = random.sample(list(range(1, self.init_columns)), self.delete_columns)
+        self.df = self.df.drop(self.df.columns[delete_list], axis=1)
+        self.df['summ'] = self.df.sum(axis=1, numeric_only=True)
+        self.df = self.df.drop(self.df.columns[1:-1], axis=1)
+        print(self.df)
+        add_one_hot_week(self.df)  # 添加周独热编码
+        add_one_hot_month(self.df)  # 添加月独热编码
+        self.data_only = self.df[self.df.columns[1]]
+        self.dataset = np.array(self.data_only.values.tolist())  # 只保留用电量数据
+        self.data_week = np.array(self.df[self.df.columns[2]].values.tolist())
+        self.data_month = np.array(self.df[self.df.columns[3]].values.tolist())
         self.days = int(self.data_only.shape[0] / 48)
         self.counts = self.days - test_l - train_l + 1  # (X,y)总行数
 
