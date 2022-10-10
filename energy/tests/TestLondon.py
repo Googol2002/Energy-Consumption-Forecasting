@@ -59,7 +59,7 @@ dataset_axis = np.arange(dataset.dataset.shape[0])
 #dataset绘图
 plt.plot(dataset_axis[48*START:48*END], dataset.dataset[48*START:48*END], c='blue', label='X')
 #均值绘图
-plt.plot(dataset_axis[48*START:48*END:48], dataset.dataset_mean[START:END], c='green', label='X')
+plt.plot(dataset_axis[48*START:48*END:48], dataset.dataset_mean[START:END], c='green', label='X_mean')
 plt.legend()
     # plt.grid(True) # 显示网格线
     # plt.savefig("ARIMA.png")
