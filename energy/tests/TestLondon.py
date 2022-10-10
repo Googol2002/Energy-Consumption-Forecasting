@@ -15,16 +15,29 @@ from energy.dataset.london_clean import London_11_14,London_11_14_random_select
 
 # dataset = London_11_14(train_l=5, test_l=1, size=1000)
 t_begin = time.time()
-df=pd.read_csv('dataset/london_merge_all.csv', header=0, decimal=",")
-print(df)
+# test:
+# df=London_11_14(train_l=5, test_l=1, size=200).before_sum
+# print(df)
+df_data=pd.read_csv('dataset/london_data.csv', header=0, decimal=",",na_filter=False,dtype='float32')
+df_date=pd.read_csv('dataset/london_date.csv', header=0, decimal=",",na_filter=False)
 t_end1 = time.time()
 print("time for read:", t_end1 - t_begin)
 
 
 t_begin = time.time()
-df[df.columns[1:]] = df[df.columns[1:]].astype(float)
+df=pd.concat(df_date,df_data,axis=1,join='outer')
+#df[df.columns[1:]] = df[df.columns[1:]].astype(float)
+# arr=df.values#.astype('float32')
+# arr_value=arr[...,1:].astype('float32')
+# print(arr)
+# print(arr_value)
+
+
+# arr_append=np.append(arr,arr_value,axis=1)
+# df=df = pd.DataFrame(arr_append)
+#print(df)
 t_end1 = time.time()
-print("time for float:", t_end1 - t_begin)
+print("time for concat:", t_end1 - t_begin)
 
 
 t_begin = time.time()
@@ -50,7 +63,7 @@ print(dataset[len(dataset)-1])
     越界会assert
 """
 START=0
-END=400
+END=dataset.days-1
 dataset_axis = np.arange(dataset.dataset.shape[0])
 plt.plot(dataset_axis[48*START:48*END], dataset.dataset[48*START:48*END], c='blue', label='X')
 

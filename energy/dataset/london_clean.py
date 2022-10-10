@@ -174,7 +174,7 @@ class London_11_14_random_select(Dataset):
             return one_hot
 
         def add_one_hot_week(df):
-            week = list(df['DateTime'])
+            week = list(df[df.columns[0]])
             Week = []
             for i in week:
                 a = int(i[0:4])
@@ -185,7 +185,7 @@ class London_11_14_random_select(Dataset):
             df['Week'] = Week
 
         def add_one_hot_month(df):
-            month = list(df['DateTime'])
+            month = list(df[df.columns[0]])
             Month = []
             for i in month:
                 j = int(i[5:7])
