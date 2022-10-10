@@ -49,12 +49,18 @@ print("variances:",variances)
 """
 # print(type(dataset.dataset),dataset.dataset.shape)
 #print(type(dataset))
-
+"""
+    :param train_l：训练集天数
+    :param test_l：测试集天数
+    :param times: 重复抽样次数，10次大致对应4000个元组(x, y, x_1, y_1)
+    :param size: 随机抽取的用户数量，上限5068
+    总元组数公式：times*(488-train_l-train_l)
+    """
 data_set=London_11_14_set(train_l=5, test_l=1, size=3000,times=10)#time for set: 11.827157974243164
 print(data_set.lst[1])#访问元组示例:(x, y, x_1, y_1)
 print(data_set.arr.shape)#(4820, 4)
 print(data_set.arr[1])#<class 'numpy.ndarray'>[x, y, x_1, y_1]
-print(data_set.counts)#元组个数:4820
+print(data_set.counts)#元组个数:4820=10*(488-5-1)
 #print(data_set.set.dataset.shape)#已对纯数据取并集，所以不再是48的倍数
 # expectations = np.mean(data_set.set.dataset.reshape(-1, 48), axis=0)
 # variances = np.var(data_set.set.dataset.reshape(-1, 48), axis=0)
