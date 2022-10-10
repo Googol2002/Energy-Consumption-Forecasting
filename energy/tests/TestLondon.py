@@ -7,37 +7,32 @@
 import numpy as np
 import matplotlib
 import matplotlib.pyplot as plt
-matplotlib.use('TkAgg')
+# matplotlib.use('TkAgg')
 import time
 import pandas as pd
 
 from energy.dataset.london_clean import London_11_14,London_11_14_random_select
 
 # dataset = London_11_14(train_l=5, test_l=1, size=1000)
-t_begin = time.time()
+
 # test:
 # df=London_11_14(train_l=5, test_l=1, size=200).before_sum
 # print(df)
-df_data=pd.read_csv('dataset/london_data.csv', header=0, decimal=",",na_filter=False,dtype='float32')
+
+#df_data=pd.read_csv('dataset/london_data.csv', header=0, decimal=",",na_filter=False,dtype='float32')
+#data = np.genfromtxt('dataset/london_data.csv', dtype=float, delimiter=',', names=True)
+t_begin = time.time()
+data=np.load('dataset/london_data.npy')
+df_data=pd.DataFrame(data)
 df_date=pd.read_csv('dataset/london_date.csv', header=0, decimal=",",na_filter=False)
 t_end1 = time.time()
-print("time for read:", t_end1 - t_begin)
+print("time for load:", t_end1 - t_begin)
 
 
-t_begin = time.time()
-df=pd.concat(df_date,df_data,axis=1,join='outer')
+df=pd.merge(df_date,df_data,how='outer',right_index=True,left_index=True)
 #df[df.columns[1:]] = df[df.columns[1:]].astype(float)
-# arr=df.values#.astype('float32')
-# arr_value=arr[...,1:].astype('float32')
-# print(arr)
-# print(arr_value)
-
-
-# arr_append=np.append(arr,arr_value,axis=1)
-# df=df = pd.DataFrame(arr_append)
-#print(df)
-t_end1 = time.time()
-print("time for concat:", t_end1 - t_begin)
+t_end2 = time.time()
+print("time for concat:", t_end2 - t_end1)
 
 
 t_begin = time.time()
@@ -54,8 +49,6 @@ print("time for once size:", t_end1 - t_begin)
 # print(dataset.data_all)
 #print(dataset.dataset)
 print(dataset.days)
-# print(dataset.__len__())
-# print(dataset.__getitem__(dataset.__len__() - 1))
 print(len(dataset))
 print(dataset[len(dataset)-1])
 """
