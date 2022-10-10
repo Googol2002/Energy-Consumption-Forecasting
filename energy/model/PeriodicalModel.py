@@ -111,25 +111,30 @@ class WeeklyModel(nn.Module):
         self.period = period
         self.time_size = time_size
 
-        self.lstm = nn.LSTM(self.input_size, self.hidden_size, self.num_layers, batch_first=True, bidirectional=True) \
-            .to(device)
-        means = means if means else \
+        self.lstm = nn.LSTM(self.input_size + self.time_size, self.hidden_size, self.num_layers,
+                            batch_first=True, bidirectional=True).to(device)
+        mlp_sizes = mlp_sizes if mlp_sizes else \
             [self.hidden_size * 2 + self.time_size, self.hidden_size, 256, 128, 128, self.period]
         # 预测均值
         self.mlp_means = init_mlp_weights(mlp_sizes, means)
         # 预测方差
         self.mlp_variances = init_mlp_weights(mlp_sizes)
 
-    def forward(self, x_energy, x_time, y_time):
-        batch_size, seq_len = x_energy.shape[0], x_energy.shape[1]
+    def forward(self, energy_xs, time_xs, time_ys):
+        batch_size, seq_len = energy_xs.shape[0], energy_xs.shape[1]    # B, L
+        predictive_seq_len = time_ys.shape[1]   # L'
         h_0 = torch.randn(self.num_directions * self.num_layers, batch_size,
                           self.hidden_size).to(device)
         # NOTICE：对于c_0，将其均值初始化在1处是十分必要的！
         c_0 = torch.randn(self.num_directions * self.num_layers, batch_size,
                           self.hidden_size).to(device) * CELL_INIT_STD_VARIANCE + 1
 
-        output, (h_n, c_n) = self.lstm(x_energy / MEANS_SCALE_FACTOR, (h_0, c_0))
+        output, (h_n, c_n) = self.lstm(torch.concat((energy_xs / MEANS_SCALE_FACTOR,
+                                                     time_xs), dim=-1), (h_0, c_0))
 
-        return torch.stack((self.mlp_means(torch.cat([h_n[0], h_n[1]], 1)).squeeze() * MEANS_SCALE_FACTOR,
-                            self.mlp_variances(torch.cat([h_n[0], h_n[1]], 1)).squeeze() * VARIANCES_SCALE_FACTOR),
-                           dim=-1)
+        # B x L' x 2
+        return torch.stack([torch.stack((self.mlp_means(torch.cat([h_n[0], h_n[1], time_ys[:, day]], 1)).
+                            squeeze() * MEANS_SCALE_FACTOR,
+                            self.mlp_variances(torch.cat([h_n[0], h_n[1], time_ys[:, day]], 1)).
+                            squeeze() * VARIANCES_SCALE_FACTOR),
+                            dim=-1) for day in range(predictive_seq_len)], dim=1)
