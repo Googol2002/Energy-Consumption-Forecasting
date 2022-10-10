@@ -21,22 +21,20 @@ from energy.dataset.london_clean import London_11_14,London_11_14_random_select
 
 #df_data=pd.read_csv('dataset/london_data.csv', header=0, decimal=",",na_filter=False,dtype='float32')
 #data = np.genfromtxt('dataset/london_data.csv', dtype=float, delimiter=',', names=True)
-t_begin = time.time()
-data=np.load('dataset/london_data.npy')
-df_data=pd.DataFrame(data)
-df_date=pd.read_csv('dataset/london_date.csv', header=0, decimal=",",na_filter=False)
-t_end1 = time.time()
-print("time for load:", t_end1 - t_begin)
-
-
-df=pd.merge(df_date,df_data,how='outer',right_index=True,left_index=True)
+#t_begin = time.time()
+# data=np.load('dataset/london_data.npy')
+# df_data=pd.DataFrame(data)
+# df_date=pd.read_csv('dataset/london_date.csv', header=0, decimal=",",na_filter=False)
+# #t_end1 = time.time()
+# #print("time for load:", t_end1 - t_begin)
+# df=pd.merge(df_date,df_data,how='outer',right_index=True,left_index=True)
 #df[df.columns[1:]] = df[df.columns[1:]].astype(float)
-t_end2 = time.time()
-print("time for concat:", t_end2 - t_end1)
+#t_end2 = time.time()
+#print("time for concat:", t_end2 - t_end1)
 
 
 t_begin = time.time()
-dataset = London_11_14_random_select(df=df,train_l=5, test_l=1, size=3000)
+dataset = London_11_14_random_select(train_l=5, test_l=1, size=3000)
 t_end1 = time.time()
 print("time for once size:", t_end1 - t_begin)
 

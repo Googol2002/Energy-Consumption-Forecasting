@@ -160,7 +160,7 @@ class London_11_14_random_select(Dataset):
     :param size: 随机抽取的用户数量，上限5068
     """
 
-    def __init__(self, df, train_l=Train_length, test_l=Test_length, size=SIZE):
+    def __init__(self,  train_l=Train_length, test_l=Test_length, size=SIZE):
 
         # 添加周&月独热编码
         def get_one_hot(index, size):
@@ -195,11 +195,9 @@ class London_11_14_random_select(Dataset):
         self.train_l = train_l
         self.test_l = test_l
         self.size = size
-        # test:
-        # self.df=London_11_14(train_l=5, test_l=1, size=20).before_sum
-        # print(self.df)
-
-        self.df = df
+        df_data = pd.DataFrame(np.load('dataset/london_data.npy'))
+        df_date = pd.read_csv('dataset/london_date.csv', header=0, decimal=",", na_filter=False)
+        self.df = pd.merge(df_date, df_data, how='outer', right_index=True, left_index=True)
         self.init_columns = self.df.shape[1] - 1
         self.delete_columns = self.init_columns - self.size
 
@@ -209,7 +207,6 @@ class London_11_14_random_select(Dataset):
         self.df = self.df.drop(self.df.columns[delete_list], axis=1)
         self.df['summ'] = self.df.sum(axis=1, numeric_only=True)
         self.df = self.df.drop(self.df.columns[1:-1], axis=1)
-        print(self.df)
         add_one_hot_week(self.df)  # 添加周独热编码
         add_one_hot_month(self.df)  # 添加月独热编码
         self.data_only = self.df[self.df.columns[1]]
