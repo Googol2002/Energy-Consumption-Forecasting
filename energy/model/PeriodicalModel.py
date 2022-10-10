@@ -28,10 +28,10 @@ def init_mlp_weights(mlp_sizes, means=None):
     if means is not None:
         outputs.bias = torch.nn.Parameter(torch.Tensor(means).to(device) / MEANS_SCALE_FACTOR)
     networks += outputs
-    mlp = nn.Sequential(*networks)
-    mlp.apply(init_weights)
+    seq = nn.Sequential(*networks)
+    seq.apply(init_weights)
 
-    return mlp
+    return seq
 
 
 # 十分重要.
