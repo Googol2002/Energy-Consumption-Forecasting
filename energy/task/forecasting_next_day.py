@@ -7,7 +7,7 @@ from torch import nn
 
 from dataset import construct_dataloader, LD2011_2014_summary_by_day
 from helper.plot import plot_forecasting_random_samples
-from model.PeriodicalModel import PeriodicalModel, customized_loss
+from model.PeriodicalModel import DailyModel, normal_loss
 
 from helper import log_printf, performance_log, load_task_model, mute_log
 
@@ -107,7 +107,7 @@ def train_loop(dataloader, model, loss_fn, optimizer):
             print(f"loss: {loss:>7f} Avg loss: {loss / (X.shape[0] * PERIOD) :>7f}  [{current:>5d}/{size:>5d}]")
 
 
-loss_function = customized_loss
+loss_function = normal_loss
 
 def train_model():
     dataset = LD2011_2014_summary_by_day(length=LENGTH,
@@ -118,9 +118,9 @@ def train_model():
 
     energy_expectations, energy_variances = dataset.statistics()
 
-    predictor = PeriodicalModel(input_size=PERIOD, hidden_size=HIDDEN_SIZE, num_layers=1, output_size=PERIOD,
-                                batch_size=BATCH_SIZE, period=PERIOD,
-                                means=energy_expectations)
+    predictor = DailyModel(input_size=PERIOD, hidden_size=HIDDEN_SIZE, num_layers=1, output_size=PERIOD,
+                           batch_size=BATCH_SIZE, period=PERIOD,
+                           means=energy_expectations)
 
     print(TASK_ID + ' model:', predictor)
     # loss_function = nn.MSELoss()
@@ -155,15 +155,15 @@ def train_model():
     # best_model.load_state_dict(load_task_model(TASK_ID))
     # val_loop(val, best_model, loss_function, tag="Val")
     #
-    # second_model = PeriodicalModel(input_size=PERIOD, hidden_size=HIDDEN_SIZE, num_layers=1, output_size=PERIOD,
+    # second_model = DailyModel(input_size=PERIOD, hidden_size=HIDDEN_SIZE, num_layers=1, output_size=PERIOD,
     #                                batch_size=BATCH_SIZE, period=PERIOD)
     # second_model.load_state_dict(load_task_model(TASK_ID))
     # val_loop(val, second_model, loss_function, tag="Val")
 
 
 def test_model():
-    predictor = PeriodicalModel(input_size=PERIOD, hidden_size=HIDDEN_SIZE, num_layers=1, output_size=PERIOD,
-                                batch_size=BATCH_SIZE, period=PERIOD)
+    predictor = DailyModel(input_size=PERIOD, hidden_size=HIDDEN_SIZE, num_layers=1, output_size=PERIOD,
+                           batch_size=BATCH_SIZE, period=PERIOD)
     predictor.load_state_dict(load_task_model(TASK_ID))
     predictor.eval()
 
