@@ -11,6 +11,7 @@ import random
 import datetime
 from torch.utils.data import Dataset, DataLoader
 import time
+import copy
 
 """
 最后的输出格式：X, y,X_1,y_1
@@ -19,6 +20,7 @@ L 是序列长，L'是答案长,W是24h内的数据点(48)
 """
 
 SIZE = 10
+TIMES=10
 Train_length = 10
 Test_length = 3
 
@@ -212,6 +214,9 @@ class London_11_14_random_select(Dataset):
         self.data_only = self.df[self.df.columns[1]]
         self.dataset = np.array(self.data_only.values.tolist())  # 只保留用电量数据
         self.dataset_mean=np.mean(self.dataset.reshape(-1,48), axis=1)
+        self.dataset_all_mean=np.mean(self.dataset_mean)
+        self.dataset_all_var=np.var(self.dataset)
+        self.dataset_all_std = np.std(self.dataset)
         self.data_week = np.array(self.df[self.df.columns[2]].values.tolist())
         self.data_month = np.array(self.df[self.df.columns[3]].values.tolist())
         self.days = int(self.data_only.shape[0] / 48)
@@ -241,5 +246,42 @@ class London_11_14_random_select(Dataset):
         x_1 = x_1.reshape(self.train_l, 19)
         y_1 = y_1.reshape(self.test_l, 19)
         return x, y, x_1, y_1
+
+    def __add__(self, other) :
+        return pd.concat(self,other)
+    def statistics(self):
+        expectations = np.mean(self.dataset.reshape(-1, 48), axis=0)
+        variances = np.var(self.dataset.reshape(-1, 48), axis=0)
+        return expectations, variances
+
+
+class London_11_14_set(London_11_14_random_select):
+    """
+    :param train_l：训练集天数
+    :param test_l：测试集天数
+    :param times: 重复抽样次数，10次大致对应4000个元组(x, y, x_1, y_1)
+    :param size: 随机抽取的用户数量，上限5068
+    """
+    def __init__(self, train_l=Train_length, test_l=Test_length,size=SIZE, times=TIMES):
+        # super().__init__(train_l=Train_length, test_l=Test_length,size=SIZE)
+        # self.times = times
+        # for i in range(self.times - 1):
+        #     other=London_11_14_random_select(train_l=self.train_l, test_l=self.test_l, size=self.size)
+        #     self=self.__add__(other)
+
+        self.train_l = train_l
+        self.test_l = test_l
+        self.size = size
+        self.times=times
+        self.lst=[]
+        for i in range(self.times):
+            other=London_11_14_random_select(train_l=self.train_l, test_l=self.test_l, size=self.size)
+            for j in range(len(other)):
+                self.lst.append(other[j])
+            #self.set.dataset=np.union1d(self.set.dataset, London_11_14_random_select(train_l=self.train_l, test_l=self.test_l, size=self.size).dataset)
+            #self.set=self.set.__add__(London_11_14_random_select(train_l=self.train_l, test_l=self.test_l, size=self.size))
+        #self.counts=int(self.set.dataset.shape[0]/48)#总行数
+        self.arr=np.array(self.lst)
+        self.counts=len(self.lst)
 
 

@@ -11,7 +11,7 @@ import matplotlib.pyplot as plt
 import time
 import pandas as pd
 
-from energy.dataset.london_clean import London_11_14,London_11_14_random_select
+from energy.dataset.london_clean import London_11_14,London_11_14_random_select,London_11_14_set
 
 # dataset = London_11_14(train_l=5, test_l=1, size=1000)
 
@@ -33,34 +33,43 @@ from energy.dataset.london_clean import London_11_14,London_11_14_random_select
 #print("time for concat:", t_end2 - t_end1)
 
 
-t_begin = time.time()
 dataset = London_11_14_random_select(train_l=5, test_l=1, size=3000)
-t_end1 = time.time()
-print("time for once size:", t_end1 - t_begin)
-
-"""
-    train_l：训练集天数
-    test_l：测试集天数
-    总天数约800+
-    size：随机可重复抽取样本的个数，可修改范围：10~5498
-"""
-# print(dataset.data_all)
-#print(dataset.dataset)
-print(dataset.days)
-print(len(dataset))
-print(dataset[len(dataset)-1])
+expectations,variances=dataset.statistics()
+print("expectations:",expectations)
+print("variances:",variances)
+# print(dataset.dataset_all_mean)
+# print(dataset.dataset_all_var)
+# print(dataset.dataset_all_std)
+# print(dataset.days)
+# print(len(dataset))
+#print(dataset[len(dataset)-1])
 """
     __getitem__()传参范围range(dataset.__len__())
     越界会assert
 """
-START=0
-END=dataset.days-1
-dataset_axis = np.arange(dataset.dataset.shape[0])
-#dataset绘图
-plt.plot(dataset_axis[48*START:48*END], dataset.dataset[48*START:48*END], c='blue', label='X')
-#均值绘图
-plt.plot(dataset_axis[48*START:48*END:48], dataset.dataset_mean[START:END], c='green', label='X_mean')
-plt.legend()
-    # plt.grid(True) # 显示网格线
-    # plt.savefig("ARIMA.png")
-plt.show()
+# print(type(dataset.dataset),dataset.dataset.shape)
+#print(type(dataset))
+
+data_set=London_11_14_set(train_l=5, test_l=1, size=3000,times=10)#time for set: 11.827157974243164
+print(data_set.lst[1])#访问元组示例:(x, y, x_1, y_1)
+print(data_set.arr.shape)#(4820, 4)
+print(data_set.arr[1])#<class 'numpy.ndarray'>[x, y, x_1, y_1]
+print(data_set.counts)#元组个数:4820
+#print(data_set.set.dataset.shape)#已对纯数据取并集，所以不再是48的倍数
+# expectations = np.mean(data_set.set.dataset.reshape(-1, 48), axis=0)
+# variances = np.var(data_set.set.dataset.reshape(-1, 48), axis=0)
+# print(expectations)
+# print(variances)
+
+
+# START=0
+# END=dataset.days-1
+# dataset_axis = np.arange(dataset.dataset.shape[0])
+# #dataset绘图
+# plt.plot(dataset_axis[48*START:48*END], dataset.dataset[48*START:48*END], c='blue', label='X')
+# #均值绘图
+# plt.plot(dataset_axis[48*START:48*END:48], dataset.dataset_mean[START:END], c='green', label='X_mean')
+# plt.legend()
+#     # plt.grid(True) # 显示网格线
+#     # plt.savefig("ARIMA.png")
+# plt.show()
