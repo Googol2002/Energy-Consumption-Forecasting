@@ -56,8 +56,8 @@ print(dataset[len(dataset)-1])
 START=0
 END=dataset.days-1
 dataset_axis = np.arange(dataset.dataset.shape[0])
-plt.plot(dataset_axis[48*START:48*END], dataset.dataset[48*START:48*END], c='blue', label='X')
-
+#plt.plot(dataset_axis[48*START:48*END], dataset.dataset[48*START:48*END], c='blue', label='X')
+plt.plot(dataset_axis[START:END], dataset.dataset_mean[START:END], c='blue', label='X')
 plt.legend()
     # plt.grid(True) # 显示网格线
     # plt.savefig("ARIMA.png")

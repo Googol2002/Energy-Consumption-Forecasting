@@ -211,6 +211,7 @@ class London_11_14_random_select(Dataset):
         add_one_hot_month(self.df)  # 添加月独热编码
         self.data_only = self.df[self.df.columns[1]]
         self.dataset = np.array(self.data_only.values.tolist())  # 只保留用电量数据
+        self.dataset_mean=np.mean(self.dataset.reshape(-1,48), axis=1)
         self.data_week = np.array(self.df[self.df.columns[2]].values.tolist())
         self.data_month = np.array(self.df[self.df.columns[3]].values.tolist())
         self.days = int(self.data_only.shape[0] / 48)
@@ -240,3 +241,5 @@ class London_11_14_random_select(Dataset):
         x_1 = x_1.reshape(self.train_l, 19)
         y_1 = y_1.reshape(self.test_l, 19)
         return x, y, x_1, y_1
+
+
