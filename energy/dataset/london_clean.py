@@ -249,9 +249,12 @@ class London_11_14_random_select(Dataset):
 
     def __add__(self, other) :
         return pd.concat(self,other)
-    def statistics(self):
-        expectations = np.mean(self.dataset.reshape(-1, 48), axis=0)
-        variances = np.var(self.dataset.reshape(-1, 48), axis=0)
+    def statistics(self,skipdays):
+        assert (skipdays<self.counts)
+        a=self.dataset.reshape(-1, 48)
+        a = np.delete(a, np.s_[:skipdays], axis=0)
+        expectations = np.mean(a, axis=0)
+        variances = np.var(a, axis=0)
         return expectations, variances
 
 
@@ -273,10 +276,20 @@ class London_11_14_set(London_11_14_random_select):
         self.test_l = test_l
         self.size = size
         self.times=times
+        self.expectations,self.variances=0.0,0.0
+        def merge_e(x,m,y,n):
+            return (x*m+y*n)/(m+n)
+        def merge_v(x,m,y,n,x_mean,y_mean):
+            a=m*x+n*y
+            b=(m*n*(x_mean-y_mean)*(x_mean-y_mean))/(m+n)
+            return (a+b)/(m+n)
         self.lst=[]
         for i in range(self.times):
             other=London_11_14_random_select(train_l=self.train_l, test_l=self.test_l, size=self.size)
-            for j in range(len(other)):
+            e,v=other.statistics(110)
+            self.variances = merge_v(self.variances, len(self.lst), v, other.counts - 110, self.expectations,e)
+            self.expectations=merge_e(self.expectations,len(self.lst),e,other.counts-110)
+            for j in range(110,len(other)):#扔掉前110天用户数少的情况
                 self.lst.append(other[j])
             #self.set.dataset=np.union1d(self.set.dataset, London_11_14_random_select(train_l=self.train_l, test_l=self.test_l, size=self.size).dataset)
             #self.set=self.set.__add__(London_11_14_random_select(train_l=self.train_l, test_l=self.test_l, size=self.size))
@@ -291,5 +304,8 @@ class London_11_14_set(London_11_14_random_select):
         assert (index < self.__len__())
         x, y, x_1, y_1=self.lst[index]
         return x, y, x_1, y_1
+
+    def statistics(self):
+        return self.expectations, self.variances
 
 

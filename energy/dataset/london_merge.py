@@ -29,11 +29,17 @@ data=np.load('dataset/london_data.npy')
 data=data.astype(bool).astype(int)
 data_distribute=np.sum(data,axis=1)
 print(data_distribute.shape)
-print(data_distribute)
+print(data_distribute)#d[5280]=5011,d[5279]=3272
+# i=5000
+# while(data_distribute[i]<4000):
+#     i+=1
+# print(i)
+# print(data_distribute[i])
+# print(data_distribute[i-1])
 import matplotlib
 import matplotlib.pyplot as plt
 dataset_axis = np.arange(data_distribute.shape[0])
 #dataset绘图
-plt.plot(dataset_axis, data_distribute, c='red', label='counts')
+plt.plot(dataset_axis, data_distribute, c='red', label='num_of_users')
 plt.legend()
 plt.show()
