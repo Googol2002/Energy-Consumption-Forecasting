@@ -281,7 +281,15 @@ class London_11_14_set(London_11_14_random_select):
             #self.set.dataset=np.union1d(self.set.dataset, London_11_14_random_select(train_l=self.train_l, test_l=self.test_l, size=self.size).dataset)
             #self.set=self.set.__add__(London_11_14_random_select(train_l=self.train_l, test_l=self.test_l, size=self.size))
         #self.counts=int(self.set.dataset.shape[0]/48)#总行数
-        self.arr=np.array(self.lst)
+        self.arr=np.array(self.lst,dtype=object)
         self.counts=len(self.lst)
+
+    def __len__(self):
+        return self.counts
+
+    def __getitem__(self, index):
+        assert (index < self.__len__())
+        x, y, x_1, y_1=self.lst[index]
+        return x, y, x_1, y_1
 
 

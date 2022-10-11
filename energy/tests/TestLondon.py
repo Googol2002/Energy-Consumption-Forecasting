@@ -57,10 +57,14 @@ print("variances:",variances)
     总元组数公式：times*(488-train_l-train_l)
     """
 data_set=London_11_14_set(train_l=5, test_l=1, size=3000,times=10)#time for set: 11.827157974243164
-print(data_set.lst[1])#访问元组示例:(x, y, x_1, y_1)
-print(data_set.arr.shape)#(4820, 4)
-print(data_set.arr[1])#<class 'numpy.ndarray'>[x, y, x_1, y_1]
-print(data_set.counts)#元组个数:4820=10*(488-5-1)
+print(data_set[len(data_set)-1])#getitem访问
+# print(data_set.lst[1])#访问元组示例:(x, y, x_1, y_1)
+# print(data_set.arr.shape)#(4820, 4)
+# print(data_set.arr[1])#<class 'numpy.ndarray'>[x, y, x_1, y_1]
+# print(data_set.counts)#元组个数:4820=10*(488-5-1)
+
+
+
 #print(data_set.set.dataset.shape)#已对纯数据取并集，所以不再是48的倍数
 # expectations = np.mean(data_set.set.dataset.reshape(-1, 48), axis=0)
 # variances = np.var(data_set.set.dataset.reshape(-1, 48), axis=0)
@@ -75,6 +79,11 @@ print(data_set.counts)#元组个数:4820=10*(488-5-1)
 # plt.plot(dataset_axis[48*START:48*END], dataset.dataset[48*START:48*END], c='blue', label='X')
 # #均值绘图
 # plt.plot(dataset_axis[48*START:48*END:48], dataset.dataset_mean[START:END], c='green', label='X_mean')
+# #非0分布绘图
+# data=np.load('dataset/london_data.npy')
+# data=data.astype(bool).astype(int)
+# data_distribute=np.sum(data,axis=1)
+# plt.plot(dataset_axis, data_distribute, c='red', label='counts')
 # plt.legend()
 #     # plt.grid(True) # 显示网格线
 #     # plt.savefig("ARIMA.png")
