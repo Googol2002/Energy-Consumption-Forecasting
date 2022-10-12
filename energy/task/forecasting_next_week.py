@@ -6,10 +6,11 @@ from matplotlib import pyplot as plt
 from torch import nn
 
 from dataset import London_11_14_random_select, construct_dataloader
+from dataset.london_clean import London_11_14_set
 from helper.plot import plot_forecasting_random_samples
 from model.PeriodicalModel import WeeklyModel, normal_loss
 
-from helper import log_printf, performance_log, load_task_model, mute_log
+from helper import log_printf, performance_log, load_task_model, mute_log_plot
 
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
@@ -28,6 +29,7 @@ LATITUDE_FACTOR = 1
 TASK_ID = "ForecastingNextWeek"
 
 bias_fn = nn.L1Loss()
+
 
 def check_gradient_norm(model):
     total_norm = 0
@@ -69,20 +71,22 @@ def val_loop(dataloader, model, loss_fn, tag="Val"):
     val_loss, accuracy, within, utilization = 0, 0, 0, 0
 
     with torch.no_grad():
-        for X, y in dataloader:
-            X, y = X.to(device), y.to(device)
+        for (energy_x, energy_y, time_x, time_y) in dataloader:
+            energy_x, time_x = energy_x.to(device, dtype=torch.float32), time_x.to(device, dtype=torch.float32)
+            energy_y, time_y = energy_y.to(device, dtype=torch.float32), time_y.to(device, dtype=torch.float32)
 
-            pred = model(X)
-            val_loss += loss_fn(pred, y).item()
+            pred = model(energy_x, time_x, time_y)
+            val_loss += loss_fn(pred, energy_y).item()
 
             means = pred[:, :, 0]
             variances = pred[:, :, 1]
-            accuracy += torch.sum(torch.abs(means - y) / y).item()
-            within += torch.sum(y <= means + LATITUDE_FACTOR * torch.sqrt(variances))
-            utilization += torch.sum(y / (means + LATITUDE_FACTOR * torch.sqrt(variances)))
+            accuracy += torch.sum(torch.abs(means - energy_y) / energy_y).item()
+            within += torch.sum(energy_y <= means + LATITUDE_FACTOR * torch.sqrt(variances))
+            utilization += torch.sum(energy_y / (means + LATITUDE_FACTOR * torch.sqrt(variances)))
 
     val_loss /= (size * PERIOD)
-    log_printf(TASK_ID, tag + " " + f"Error: \n Accuracy: {100 - (100 * accuracy / (size * PERIOD)):>0.3f}%, Avg loss: {val_loss:>8f}")
+    log_printf(TASK_ID,
+               tag + " " + f"Error: \n Accuracy: {100 - (100 * accuracy / (size * PERIOD)):>0.3f}%, Avg loss: {val_loss:>8f}")
     log_printf(TASK_ID, f" Within the Power Generation: {(100 * within / (size * PERIOD)):>0.3f}%")
     log_printf(TASK_ID, f" Utilization Rate:  {(100 * utilization / (size * PERIOD)):>0.3f}%\n")
 
@@ -91,11 +95,12 @@ def val_loop(dataloader, model, loss_fn, tag="Val"):
 
 def train_loop(dataloader, model, loss_fn, optimizer):
     size = len(dataloader.dataset)
-    for batch, (X, y) in enumerate(dataloader):
-        X, y = X.to(device), y.to(device)
+    for batch, (energy_x, energy_y, time_x, time_y) in enumerate(dataloader):
+        energy_x, time_x = energy_x.to(device, dtype=torch.float32), time_x.to(device, dtype=torch.float32)
+        energy_y, time_y = energy_y.to(device, dtype=torch.float32), time_y.to(device, dtype=torch.float32)
         # Compute prediction and loss
-        pred = model(X)
-        loss = loss_fn(pred, y)
+        pred = model(energy_x, time_x, time_y)
+        loss = loss_fn(pred, energy_y)
 
         # Backpropagation
         optimizer.zero_grad()
@@ -106,14 +111,15 @@ def train_loop(dataloader, model, loss_fn, optimizer):
         optimizer.step()
 
         if batch % 10 == 0:
-            loss, current = loss.item(), batch * len(X)
-            print(f"loss: {loss:>7f} Avg loss: {loss / (X.shape[0] * PERIOD) :>7f}  [{current:>5d}/{size:>5d}]")
+            loss, current = loss.item(), batch * len(energy_x)
+            print(f"loss: {loss:>7f} Avg loss: {loss / (energy_x.shape[0] * PERIOD) :>7f}  [{current:>5d}/{size:>5d}]")
 
 
 loss_function = normal_loss
 
+
 def train_model():
-    dataset = London_11_14_random_select(train_l=X_LENGTH, test_l=Y_LENGTH, size=3000)
+    dataset = London_11_14_set(train_l=X_LENGTH, test_l=Y_LENGTH, size=3000)
     train, val, test = construct_dataloader(dataset, batch_size=BATCH_SIZE)
     print(len(dataset))
 
@@ -160,7 +166,7 @@ def test_model():
 
     dataset = London_11_14_random_select(train_l=X_LENGTH, test_l=Y_LENGTH, size=3000)
     train, val, test = construct_dataloader(dataset, batch_size=BATCH_SIZE)
-    with mute_log():
+    with mute_log_plot():
         val_loop(val, predictor, loss_function, tag="Val")
         val_loop(test, predictor, loss_function, tag="Test")
         plot_forecasting_random_samples(predictor, test.dataset, LATITUDE_FACTOR, filename="Performance")

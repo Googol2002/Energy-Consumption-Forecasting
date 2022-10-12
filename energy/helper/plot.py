@@ -7,6 +7,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import random
 
+from helper import is_muted
 from helper.log import date_tag
 
 FIGURE_DIRECTORY = r"figure"
@@ -64,7 +65,7 @@ def plot_forecasting_random_samples(model, dataset, factor, row=2, col=3, filena
             axs[i][j].set_xlabel("Time")
             axs[i][j].set_ylabel("Energy Consumption")
 
-    if filename is not None:
+    if is_muted and filename is not None:
         folder = os.path.exists(os.path.join(FIGURE_DIRECTORY))
         if not folder:  # 判断是否存在文件夹如果不存在则创建为文件夹
             os.makedirs(os.path.join(FIGURE_DIRECTORY))

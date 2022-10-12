@@ -9,7 +9,7 @@ from dataset import construct_dataloader, LD2011_2014_summary_by_day
 from helper.plot import plot_forecasting_random_samples
 from model.PeriodicalModel import DailyModel, normal_loss
 
-from helper import log_printf, performance_log, load_task_model, mute_log
+from helper import log_printf, performance_log, load_task_model, mute_log_plot
 
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
@@ -171,7 +171,7 @@ def test_model():
                                          csv_file=r"dataset/LD2011_2014.csv",
                                          )
     train, val, test = construct_dataloader(dataset, batch_size=BATCH_SIZE)
-    with mute_log():
+    with mute_log_plot():
         val_loop(val, predictor, loss_function, tag="Val")
         val_loop(test, predictor, loss_function, tag="Test")
         plot_forecasting_random_samples(predictor, test.dataset, LATITUDE_FACTOR, filename="Performance")

@@ -7,6 +7,16 @@ import re
 
 LOG_DIRECTORY = r"log"
 
+# 用于静音log
+is_muted = False
+@contextmanager
+def mute_log_plot():
+    global is_muted
+    is_muted = True
+    yield
+    is_muted = False
+
+
 # 获取当前上海时间
 SHA_TZ = timezone(
     timedelta(hours=8),
@@ -16,15 +26,6 @@ utc_time = datetime.utcnow().replace(tzinfo=timezone.utc)
 shanghai_time = utc_time.astimezone(SHA_TZ)
 # 转换为其他日期格式，如："%Y-%m-%d %H:%M:%S"
 date_tag = shanghai_time.strftime("%Y-%m-%d %H-%M-%S")
-
-# 用于静音log
-is_muted = False
-@contextmanager
-def mute_log():
-    global is_muted
-    is_muted = True
-    yield
-    is_muted = False
 
 def performance_log(task_id, msg, model=None):
     log_printf(task_id, msg)

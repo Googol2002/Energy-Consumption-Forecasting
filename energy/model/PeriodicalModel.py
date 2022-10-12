@@ -22,13 +22,13 @@ def init_weights(layer):
 def init_mlp_weights(mlp_sizes, means=None):
     networks = []
     for input_size, output_size in zip(mlp_sizes[: -2], mlp_sizes[1: -1]):
-        networks += nn.Linear(input_size, output_size)
-        networks += nn.ReLU()
+        networks.append(nn.Linear(input_size, output_size))
+        networks.append(nn.ReLU())
     outputs = nn.Linear(mlp_sizes[-2], mlp_sizes[-1])
     if means is not None:
         outputs.bias = torch.nn.Parameter(torch.Tensor(means).to(device) / MEANS_SCALE_FACTOR)
-    networks += outputs
-    seq = nn.Sequential(*networks)
+    networks.append(outputs)
+    seq = nn.Sequential(*networks).to(device)
     seq.apply(init_weights)
 
     return seq
@@ -137,4 +137,4 @@ class WeeklyModel(nn.Module):
                             squeeze() * MEANS_SCALE_FACTOR,
                             self.mlp_variances(torch.cat([h_n[0], h_n[1], time_ys[:, day]], 1)).
                             squeeze() * VARIANCES_SCALE_FACTOR),
-                            dim=-1) for day in range(predictive_seq_len)], dim=1)
+                            dim=1) for day in range(predictive_seq_len)], dim=1)
