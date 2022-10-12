@@ -4,11 +4,12 @@ import copy
 
 from matplotlib import pyplot as plt
 from torch import nn
+from torch.utils.data import DataLoader
 
 from dataset import London_11_14_random_select, construct_dataloader
 from dataset.london_clean import London_11_14_set
 from helper.plot import plot_forecasting_random_samples
-from model.PeriodicalModel import WeeklyModel, normal_loss
+from model.PeriodicalModel import WeeklyModel, normal_loss, customize_loss
 
 from helper import log_printf, performance_log, load_task_model, mute_log_plot
 
@@ -25,6 +26,10 @@ Y_LENGTH = 7
 EPOCH_STEP = 300
 TOLERANCE = 20
 LATITUDE_FACTOR = 1
+LEARNING_RATE = 5 * 0.001
+MEANS_SCALE_FACTOR = 1000
+VARIANCES_SCALE_FACTOR = 100000
+VARIANCES_DECAY = 2 * 1e-5
 
 TASK_ID = "ForecastingNextWeek"
 
@@ -44,24 +49,26 @@ def check_gradient_norm(model):
 
 
 def regression_display(model, sample):
+    energy_x, energy_y, time_x, time_y = sample
+
     # TODO: 需要重写
     with torch.no_grad():
-        pred = model(torch.unsqueeze(torch.Tensor(sample[0]).to(device), 0)).cpu().numpy()
-    x = sample[0].reshape(-1)
-    y = sample[1].reshape(-1)
+        pred = model(energy_x.to(device, dtype=torch.float32),
+                     time_x.to(device, dtype=torch.float32),
+                     time_y.to(device, dtype=torch.float32)).cpu().numpy()
 
     fig, axs = plt.subplots(2, 1, figsize=(12, 12))
 
-    means_cup = pred[:, 0].reshape(-1)
-    variances_cup = pred[:, 1].reshape(-1)
+    means_cup, variances_cup = pred[:, :, 0].reshape(-1), pred[:, :, 1].reshape(-1)
+    energy_x, energy_y = energy_x.reshape(-1).cpu().numpy(), energy_y.reshape(-1).cpu().numpy()
 
-    axs[0].plot(range(y.shape[0]), y)
-    axs[0].plot(range(y.shape[0]), means_cup, color="red")
-    axs[0].fill_between(range(y.shape[0]), means_cup - LATITUDE_FACTOR * np.sqrt(variances_cup),
+    axs[0].plot(range(energy_y.shape[0]), energy_y)
+    axs[0].plot(range(energy_y.shape[0]), means_cup, color="red")
+    axs[0].fill_between(range(energy_y.shape[0]), means_cup - LATITUDE_FACTOR * np.sqrt(variances_cup),
                         means_cup + LATITUDE_FACTOR * np.sqrt(variances_cup), facecolor='red', alpha=0.3)
 
-    axs[1].plot(range(-x.shape[0], y.shape[0]), np.concatenate([x, y]))
-    axs[1].plot(range(y.shape[0]), means_cup, color="red")
+    axs[1].plot(range(-energy_x.shape[0], energy_y.shape[0]), np.concatenate([energy_x, energy_y]))
+    axs[1].plot(range(energy_y.shape[0]), means_cup, color="red")
 
     plt.show()
 
@@ -86,9 +93,9 @@ def val_loop(dataloader, model, loss_fn, tag="Val"):
 
     val_loss /= (size * PERIOD)
     log_printf(TASK_ID,
-               tag + " " + f"Error: \n Accuracy: {100 - (100 * accuracy / (size * PERIOD)):>0.3f}%, Avg loss: {val_loss:>8f}")
-    log_printf(TASK_ID, f" Within the Power Generation: {(100 * within / (size * PERIOD)):>0.3f}%")
-    log_printf(TASK_ID, f" Utilization Rate:  {(100 * utilization / (size * PERIOD)):>0.3f}%\n")
+               tag + " " + f"Error: \n Accuracy: {100 - (100 * accuracy / (size * PERIOD * Y_LENGTH)):>0.3f}%, Avg loss: {val_loss:>8f}")
+    log_printf(TASK_ID, f" Within the Power Generation: {(100 * within / (size * PERIOD * Y_LENGTH)):>0.3f}%")
+    log_printf(TASK_ID, f" Utilization Rate:  {(100 * utilization / (size * PERIOD * Y_LENGTH)):>0.3f}%\n")
 
     return val_loss, 1 - accuracy / (size * PERIOD)
 
@@ -115,7 +122,7 @@ def train_loop(dataloader, model, loss_fn, optimizer):
             print(f"loss: {loss:>7f} Avg loss: {loss / (energy_x.shape[0] * PERIOD) :>7f}  [{current:>5d}/{size:>5d}]")
 
 
-loss_function = normal_loss
+loss_function = customize_loss(VARIANCES_DECAY)
 
 
 def train_model():
@@ -127,10 +134,12 @@ def train_model():
 
     predictor = WeeklyModel(input_size=PERIOD, hidden_size=HIDDEN_SIZE, num_layers=1,
                             output_size=PERIOD, batch_size=BATCH_SIZE, period=PERIOD,
-                            time_size=TIME_SIZE, means=energy_expectations)
+                            time_size=TIME_SIZE, means=energy_expectations,
+                            means_scale_factor=MEANS_SCALE_FACTOR,
+                            variances_scale_factor=VARIANCES_SCALE_FACTOR)
 
     print(TASK_ID + ' model:', predictor)
-    adam = torch.optim.Adam(predictor.parameters(), lr=0.001, weight_decay=WEIGHT_DECAY)
+    adam = torch.optim.Adam(predictor.parameters(), lr=LEARNING_RATE, weight_decay=WEIGHT_DECAY)
 
     best_model = None
     min_val_loss = 50000000000
@@ -152,9 +161,12 @@ def train_model():
 
     best_model.lstm.flatten_parameters()
     performance_log(TASK_ID, "========Best Performance========\n", model=predictor)
-    val_loop(val, best_model, loss_function)
-    val_loop(test, best_model, loss_function, tag="Test")
-    plot_forecasting_random_samples(best_model, test.dataset, LATITUDE_FACTOR, filename="Performance")
+    val_loop(train, best_model, loss_function, tag="Train")
+    val_loop(val, best_model, loss_function, tag="Val")
+    # val_loop(test, best_model, loss_function, tag="Test")
+    # 画图测试
+    display_dataset = DataLoader(val.dataset, batch_size=1, shuffle=True)
+    regression_display(best_model, next(iter(display_dataset)))
 
 
 def test_model():
