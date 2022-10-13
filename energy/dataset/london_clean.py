@@ -12,7 +12,10 @@ import datetime
 from torch.utils.data import Dataset, DataLoader
 import time
 import copy
+import torch
 
+# import tensorflow as tf
+device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 """
 最后的输出格式：X, y,X_1,y_1
 X:L * W, y:L' * W,X_1:L * 19, y_1:L' * 19
@@ -20,7 +23,7 @@ L 是序列长，L'是答案长,W是24h内的数据点(48)
 """
 
 SIZE = 10
-TIMES=10
+TIMES = 10
 Train_length = 10
 Test_length = 3
 
@@ -162,7 +165,7 @@ class London_11_14_random_select(Dataset):
     :param size: 随机抽取的用户数量，上限5068
     """
 
-    def __init__(self,  train_l=Train_length, test_l=Test_length, size=SIZE):
+    def __init__(self, train_l=Train_length, test_l=Test_length, size=SIZE):
 
         # 添加周&月独热编码
         def get_one_hot(index, size):
@@ -212,13 +215,13 @@ class London_11_14_random_select(Dataset):
         add_one_hot_week(self.df)  # 添加周独热编码
         add_one_hot_month(self.df)  # 添加月独热编码
         self.data_only = self.df[self.df.columns[1]]
-        self.dataset = np.array(self.data_only.values.tolist())  # 只保留用电量数据
-        self.dataset_mean=np.mean(self.dataset.reshape(-1,48), axis=1)
-        self.dataset_all_mean=np.mean(self.dataset_mean)
-        self.dataset_all_var=np.var(self.dataset)
-        self.dataset_all_std = np.std(self.dataset)
-        self.data_week = np.array(self.df[self.df.columns[2]].values.tolist())
-        self.data_month = np.array(self.df[self.df.columns[3]].values.tolist())
+        self.dataset = (np.array(self.data_only.values.tolist()))  # 只保留用电量数据
+        # self.dataset_mean=np.mean(self.dataset.reshape(-1,48), axis=1)
+        # self.dataset_all_mean=np.mean(self.dataset_mean)
+        # self.dataset_all_var=np.var(self.dataset)
+        # self.dataset_all_std = np.std(self.dataset)
+        self.data_week = (np.array(self.df[self.df.columns[2]].values.tolist()))
+        self.data_month = (np.array(self.df[self.df.columns[3]].values.tolist()))
         self.days = int(self.data_only.shape[0] / 48)
         self.counts = self.days - test_l - train_l + 1  # (X,y)总行数
 
@@ -247,65 +250,181 @@ class London_11_14_random_select(Dataset):
         y_1 = y_1.reshape(self.test_l, 19)
         return x, y, x_1, y_1
 
-    def __add__(self, other) :
-        return pd.concat(self,other)
-    def statistics(self,skipdays):
-        assert (skipdays<self.counts)
-        a=self.dataset.reshape(-1, 48)
+    def __add__(self, other):
+        return pd.concat(self, other)
+
+    def statistics(self, skipdays):
+        assert (skipdays < self.counts)
+        a = self.dataset.reshape(-1, 48)
         a = np.delete(a, np.s_[:skipdays], axis=0)
+        # expectations =tf.reduce_mean(,axis=0)
         expectations = np.mean(a, axis=0)
+        # variances = tf.reduce_mean(tf.cast(a, tf.float32), axis=0)
         variances = np.var(a, axis=0)
         return expectations, variances
 
 
+# class London_11_14_set(London_11_14_random_select):
+#     """
+#     :param train_l：训练集天数
+#     :param test_l：测试集天数
+#     :param times: 重复抽样次数，10次大致对应4000个元组(x, y, x_1, y_1)
+#     :param size: 随机抽取的用户数量，上限5068
+#     """
+#
+#     def __init__(self, train_l=Train_length, test_l=Test_length, size=SIZE, times=TIMES):
+#         # super().__init__(train_l=Train_length, test_l=Test_length,size=SIZE)
+#         # self.times = times
+#         # for i in range(self.times - 1):
+#         #     other=London_11_14_random_select(train_l=self.train_l, test_l=self.test_l, size=self.size)
+#         #     self=self.__add__(other)
+#
+#         self.train_l = train_l
+#         self.test_l = test_l
+#         self.size = size
+#         self.times = times
+#         self.expectations, self.variances = 0.0, 0.0
+#
+#         def merge_e(x, m, y, n):
+#             return (x * m + y * n) / (m + n)
+#
+#         def merge_v(x, m, y, n, x_mean, y_mean):
+#             a = m * x + n * y
+#             b = (m * n * (x_mean - y_mean) * (x_mean - y_mean)) / (m + n)
+#             return (a + b) / (m + n)
+#
+#         self.lst = []
+#
+#         for i in range(self.times):
+#             # begin = time.time()
+#             other = London_11_14_random_select(train_l=self.train_l, test_l=self.test_l, size=self.size)
+#             # end = time.time()
+#             # print("1 times merge:", end - begin)
+#             e, v = other.statistics(110)
+#             self.variances = merge_v(self.variances, len(self.lst), v, other.counts - 110, self.expectations, e)
+#             self.expectations = merge_e(self.expectations, len(self.lst), e, other.counts - 110)
+#
+#             for j in range(110, len(other)):  # 扔掉前110天用户数少的情况
+#                 self.lst.append(other[j])
+#
+#             # self.set.dataset=np.union1d(self.set.dataset, London_11_14_random_select(train_l=self.train_l, test_l=self.test_l, size=self.size).dataset)
+#             # self.set=self.set.__add__(London_11_14_random_select(train_l=self.train_l, test_l=self.test_l, size=self.size))
+#         # self.counts=int(self.set.dataset.shape[0]/48)#总行数
+#
+#         self.arr = np.array(self.lst, dtype=object)
+#         self.counts = len(self.lst)
+#
+#     def __len__(self):
+#         return self.counts
+#
+#     def __getitem__(self, index):
+#         assert (index < self.__len__())
+#         x, y, x_1, y_1 = self.lst[index]
+#         return x, y, x_1, y_1
+#
+#     def statistics(self):
+#         return self.expectations, self.variances
+
+
 class London_11_14_set(London_11_14_random_select):
     """
-    :param train_l：训练集天数
-    :param test_l：测试集天数
-    :param times: 重复抽样次数，10次大致对应4000个元组(x, y, x_1, y_1)
+    :param train_l：X天数
+    :param label_l：y天数
+    :param test_days：测试集总天数（不参与数据增强）
+    :param times: 重复抽样次数，10次大致对应3000个元组(x, y, x_1, y_1)
     :param size: 随机抽取的用户数量，上限5068
+    :param test_list: 需要在训练集去除的样本
     """
-    def __init__(self, train_l=Train_length, test_l=Test_length,size=SIZE, times=TIMES):
-        # super().__init__(train_l=Train_length, test_l=Test_length,size=SIZE)
-        # self.times = times
-        # for i in range(self.times - 1):
-        #     other=London_11_14_random_select(train_l=self.train_l, test_l=self.test_l, size=self.size)
-        #     self=self.__add__(other)
 
+    def __init__(self, train_l=Train_length, label_l=Test_length, test_days=70, size=SIZE, times=TIMES,test_list=[]):
         self.train_l = train_l
-        self.test_l = test_l
+        self.label_l = label_l
+        self.test_days = test_days
         self.size = size
-        self.times=times
-        self.expectations,self.variances=0.0,0.0
-        def merge_e(x,m,y,n):
-            return (x*m+y*n)/(m+n)
-        def merge_v(x,m,y,n,x_mean,y_mean):
-            a=m*x+n*y
-            b=(m*n*(x_mean-y_mean)*(x_mean-y_mean))/(m+n)
-            return (a+b)/(m+n)
-        self.lst=[]
+        self.times = times
+        self.test_list=test_list
+        self.expectations, self.variances = 0.0, 0.0
+
+        def merge_e(x, m, y, n):
+            return (x * m + y * n) / (m + n)
+
+        def merge_v(x, m, y, n, x_mean, y_mean):
+            a = m * x + n * y
+            b = (m * n * (x_mean - y_mean) * (x_mean - y_mean)) / (m + n)
+            return (a + b) / (m + n)
+
+        self.lst = []
+
         for i in range(self.times):
-            other=London_11_14_random_select(train_l=self.train_l, test_l=self.test_l, size=self.size)
-            e,v=other.statistics(110)
-            self.variances = merge_v(self.variances, len(self.lst), v, other.counts - 110, self.expectations,e)
-            self.expectations=merge_e(self.expectations,len(self.lst),e,other.counts-110)
-            for j in range(110,len(other)):#扔掉前110天用户数少的情况
-                self.lst.append(other[j])
-            #self.set.dataset=np.union1d(self.set.dataset, London_11_14_random_select(train_l=self.train_l, test_l=self.test_l, size=self.size).dataset)
-            #self.set=self.set.__add__(London_11_14_random_select(train_l=self.train_l, test_l=self.test_l, size=self.size))
-        #self.counts=int(self.set.dataset.shape[0]/48)#总行数
-        self.arr=np.array(self.lst,dtype=object)
-        self.counts=len(self.lst)
+            other = London_11_14_random_select(train_l=self.train_l, test_l=self.label_l, size=self.size)
+            e, v = other.statistics(110)
+            self.variances = merge_v(self.variances, len(self.lst), v, other.counts - 110, self.expectations, e)
+            self.expectations = merge_e(self.expectations, len(self.lst), e, other.counts - 110)
+
+            for j in range(110, len(other)):  # 扔掉前110天用户数少的情况
+                if j not in self.test_list:
+                    self.lst.append(other[j])
+
+        self.arr = np.array(self.lst, dtype=object)
+        self.counts = len(self.lst)
 
     def __len__(self):
         return self.counts
 
     def __getitem__(self, index):
         assert (index < self.__len__())
-        x, y, x_1, y_1=self.lst[index]
+        x, y, x_1, y_1 = self.lst[index]
         return x, y, x_1, y_1
 
     def statistics(self):
         return self.expectations, self.variances
 
 
+class London_11_14_set_test(Dataset):
+    """
+    :param train_l：X天数
+    :param label_l：y天数
+    :param test_days：测试集总天数（不参与数据增强）
+    :param times: 重复抽样次数，10次大致对应3000个元组(x, y, x_1, y_1)
+    :param size: 随机抽取的用户数量，上限5068
+    """
+
+    def __init__(self, train_l=Train_length, label_l=Test_length, test_days=70, size=SIZE, times=TIMES):
+        #super().__init__(train_l=Train_length, label_l=Test_length, test_days=70, size=SIZE, times=TIMES)
+        self.train_l = train_l
+        self.label_l = label_l
+        self.test_days = test_days
+        self.size = size
+        self.times = times
+        self.days = 378 - self.train_l - self.label_l
+        self.train_days = self.days - self.test_days
+        self.test_list = random.sample(list(range(1, self.days)), self.test_days)
+        print("test_list:", self.test_list)
+        self.data_test=[]
+        other = London_11_14_random_select(train_l=self.train_l, test_l=self.label_l, size=self.size)
+        # 取出测试集
+        for k in range(len(self.test_list)):
+            self.data_test.append(other[self.test_list[k]])
+    def __len__(self):
+        return len(self.data_test)
+    def __getitem__(self, index):
+        assert (index < self.__len__())
+        x, y, x_1, y_1 = self.data_test[index]
+        return x, y, x_1, y_1
+
+    def get_test_list(self):
+        return self.test_list
+
+
+def createDataSet(train_l=Train_length, label_l=Test_length, test_days=70, size=SIZE, times=TIMES):
+    """
+        :param train_l：X天数
+        :param label_l：y天数
+        :param test_days：测试集总天数（不参与数据增强）
+        :param times: 重复抽样次数，10次大致对应3000个元组(x, y, x_1, y_1)
+        :param size: 随机抽取的用户数量，上限5068
+    """
+    set2 = London_11_14_set_test(train_l=train_l, label_l=label_l, test_days=test_days, size=size, times=times)
+    set1 = London_11_14_set(train_l=train_l, label_l=label_l, test_days=test_days, size=size, times=times,test_list=set2.get_test_list())
+    e,v=set1.statistics()
+    return set1, set2,e,v

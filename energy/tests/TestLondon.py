@@ -11,8 +11,8 @@ import matplotlib.pyplot as plt
 import time
 import pandas as pd
 
-from energy.dataset.london_clean import London_11_14,London_11_14_random_select,London_11_14_set
-
+from energy.dataset.london_clean import London_11_14,London_11_14_random_select#,London_11_14_set_train
+from energy.dataset.london_clean import London_11_14_set_test,London_11_14_set,createDataSet
 # dataset = London_11_14(train_l=5, test_l=1, size=1000)
 
 # test:
@@ -58,14 +58,22 @@ from energy.dataset.london_clean import London_11_14,London_11_14_random_select,
     :param size: 随机抽取的用户数量，上限5068
     总元组数公式：times*(378-train_l-train_l)
     """
-data_set=London_11_14_set(train_l=5, test_l=1, size=3000,times=10)#time for set: 11.827157974243164
-print(data_set[len(data_set)-1])#getitem访问
-print(len(data_set))
-expectations,variances=data_set.statistics()
+begin=time.time()
+set1,set2,expectations,variances=createDataSet(train_l=5, label_l=1, test_days=70,size=3000,times=10)
+#data_set=London_11_14_set(train_l=5, label_l=1, size=3000,times=10)#time for set: 11.827157974243164
+end=time.time()
+
+# print(data_set[len(data_set)-1])#getitem访问
+# print(len(data_set))
+#expectations,variances=data_set.statistics()
 print("expectations:",expectations)
 print("variances:",variances)
 print(expectations.mean())
 print(variances.mean())
+print(set2[0])
+print(len(set1),len(set2))
+print(set1[1])
+print("10 times random:",end-begin)
 # print(data_set.lst[1])#访问元组示例:(x, y, x_1, y_1)
 # print(data_set.arr.shape)#(4820, 4)
 # print(data_set.arr[1])#<class 'numpy.ndarray'>[x, y, x_1, y_1]
