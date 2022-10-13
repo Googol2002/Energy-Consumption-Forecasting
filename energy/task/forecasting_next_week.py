@@ -25,7 +25,7 @@ TIME_SIZE = 7 + 12
 X_LENGTH = 30
 Y_LENGTH = 7
 EPOCH_STEP = 300
-TOLERANCE = 20
+TOLERANCE = 30
 LATITUDE_FACTOR = 1
 LEARNING_RATE = 5e-3
 MEANS_SCALE_FACTOR = 1000
@@ -37,16 +37,16 @@ TASK_ID = "ForecastingNextWeek"
 bias_fn = nn.L1Loss()
 
 
-def check_gradient_norm(model):
+def check_gradient_norm_L2(model):
     total_norm = 0
 
     for p in model.parameters():
         if p.grad is not None:
             param_norm = p.grad.detach().data.norm(2)
             total_norm += param_norm.item() ** 2
-    total_norm = total_norm ** 0.5
+    total_norm = total_norm
 
-    print("Gradient norm: {:>7f}".format(total_norm))
+    return total_norm
 
 
 def regression_display(model, sample):
@@ -102,7 +102,7 @@ def val_loop(dataloader, model, loss_fn, tag="Val"):
 
 def train_loop(dataloader, model, loss_fn, optimizer):
     size = len(dataloader.dataset)
-    total_loss = 0
+    total_loss, gradient_norm = 0, 0
     for batch, (energy_x, energy_y, time_x, time_y) in enumerate(dataloader):
         energy_x, time_x = energy_x.to(device, dtype=torch.float32), time_x.to(device, dtype=torch.float32)
         energy_y, time_y = energy_y.to(device, dtype=torch.float32), time_y.to(device, dtype=torch.float32)
@@ -113,7 +113,8 @@ def train_loop(dataloader, model, loss_fn, optimizer):
         # Backpropagation
         optimizer.zero_grad()
         loss.backward()
-        # check_gradient_norm(model)
+        # 记录梯度大小
+        gradient_norm += check_gradient_norm_L2(model)
         # clip
         nn.utils.clip_grad_norm_(model.parameters(), GRADIENT_NORM)
         optimizer.step()
@@ -124,13 +125,13 @@ def train_loop(dataloader, model, loss_fn, optimizer):
             loss, current = loss.item(), batch * len(energy_x)
             print(f"loss: {loss:>7f} Avg loss: {loss / (energy_x.shape[0] * PERIOD) :>7f}  [{current:>5d}/{size:>5d}]")
 
-    return total_loss / (PERIOD * size)
+    return total_loss / (PERIOD * size), gradient_norm ** 0.5
+
 
 loss_function = customize_loss(VARIANCES_DECAY)
 
-
 def train_model():
-    dataset = London_11_14_set(train_l=X_LENGTH, test_l=Y_LENGTH, size=3000, times=2)
+    dataset = London_11_14_set(train_l=X_LENGTH, test_l=Y_LENGTH, size=1500, times=4)
     train, val, test = construct_dataloader(dataset, batch_size=BATCH_SIZE)
     print(len(dataset))
 
@@ -153,7 +154,7 @@ def train_model():
 
     for epoch in range(EPOCH_STEP):
         print("========EPOCH {}========\n".format(epoch))
-        train_loss = train_loop(train, predictor, loss_function, adam)
+        train_loss, norm = train_loop(train, predictor, loss_function, adam)
         validation_loss, bias = val_loop(val, predictor, loss_function)
         tolerance += 1
         if validation_loss < min_val_loss:
@@ -163,7 +164,7 @@ def train_model():
         if tolerance > TOLERANCE:
             log_printf(TASK_ID, "Early stopped at epoch {}.\n".format(epoch))
             break
-        record_training_process(TASK_ID, train_loss, validation_loss)
+        record_training_process(TASK_ID, train_loss, validation_loss, gradient_norm=norm)
 
     best_model.lstm.flatten_parameters()
     performance_log(TASK_ID, "========Best Performance========\n", model=predictor)

@@ -13,11 +13,12 @@ VARIANCES_SCALE_FACTOR = 100000000
 #     return torch.sum((labels - _means) ** 2 / _variances +
 #                      VARIANCES_FACTOR * _variances)
 
+STABILIZING_FACTOR = 1e-7
 def customize_loss(variances_decay):
     def loss(outputs, labels):
         _means, _variances = outputs[:, :, 0], outputs[:, :, 1]
 
-        return torch.sum((labels - _means) ** 2 / _variances +
+        return torch.sum((labels - _means) ** 2 / (_variances + STABILIZING_FACTOR) +
                          variances_decay * _variances)
     return loss
 

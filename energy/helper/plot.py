@@ -15,8 +15,8 @@ FIGURE_DIRECTORY = r"figure"
 
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
-plt.rcParams["font.sans-serif"] = ["SimHei"]  # 设置字体
-plt.rcParams["axes.unicode_minus"] = False  # 该语句解决图像中的“-”负号的乱码问题
+# plt.rcParams["font.sans-serif"] = ["SimHei"]  # 设置字体
+# plt.rcParams["axes.unicode_minus"] = False  # 该语句解决图像中的“-”负号的乱码问题
 
 
 def plot_ld2011_2014_summary_means_distribution():
@@ -44,6 +44,15 @@ def plot_ld2011_2014_summary_means_distribution():
 
 def _figure_directory_path(task_id):
     return os.path.join(LOG_DIRECTORY, task_id, "figure")
+
+
+def _save_fig(task_id, filename=None):
+    if not is_muted and filename is not None:
+        path = _figure_directory_path(task_id)
+        if not os.path.exists(path):  # 判断是否存在文件夹如果不存在则创建为文件夹
+            os.makedirs(path)
+        plt.savefig(os.path.join(path, "{}-Date({}).png".format(filename, date_tag)), dpi=300)
+
 
 def plot_forecasting_random_samples_daily(model, dataset, factor, row=2, col=3, filename=None):
     fig, axs = plt.subplots(row, col, figsize=(col * 6, row * 6))
@@ -101,36 +110,36 @@ def plot_forecasting_random_samples_weekly(task_id, model, dataset, factor, size
         axs[i].set_xlabel("Time")
         axs[i].set_ylabel("Energy Consumption")
 
-    if not is_muted and filename is not None:
-        path = _figure_directory_path(task_id)
-        if not os.path.exists(path):  # 判断是否存在文件夹如果不存在则创建为文件夹
-            os.makedirs(path)
-        plt.savefig(os.path.join(path, "{}-Date({}).png".format(filename, date_tag)), dpi=300)
-
+    _save_fig(task_id, filename)
     plt.show()
 
 
+CLIP = 10
 def plot_training_process(task_id, filename=None):
     fig, axs = plt.subplots(2, 1, figsize=(12, 12))
-    axs[0].title.set_text("Training Process")
-    axs[0].set_xlabel("Epoch")
-    axs[0].set_ylabel("Loss")
 
     train_loss = np.asarray(training_recoder[task_id].train_loss)
     val_loss = np.asarray(training_recoder[task_id].val_loss)
+    gradient_norm = np.asarray(training_recoder[task_id].gradient_norm)
+    indexes = np.asarray(range(len(train_loss)), dtype=int)
 
-    axs[0].plot(range(len(train_loss)), train_loss, label="Train Loss")
-    axs[0].plot(range(len(val_loss)), val_loss, label="Val Loss")
+    clip = CLIP if len(indexes) > CLIP * 2 else 0
+
+    axs[0].title.set_text("Training Loss")
+    axs[0].set_xlabel("Epoch")
+    axs[0].set_ylabel("Loss")
+    axs[0].plot(indexes[clip:], train_loss[clip:], label="Loss on Training Set")
+    axs[0].plot(indexes[clip:], val_loss[clip:], label="Loss on Validation Set")
     axs[0].legend()
 
-    if not is_muted and filename is not None:
-        path = _figure_directory_path(task_id)
-        if not os.path.exists(path):  # 判断是否存在文件夹如果不存在则创建为文件夹
-            os.makedirs(path)
-        plt.savefig(os.path.join(path, "{}-Date({}).png".format(filename, date_tag)), dpi=300)
+    axs[1].title.set_text("Training Gradient Norm")
+    axs[1].set_xlabel("Epoch")
+    axs[1].set_ylabel("Norm")
+    axs[1].plot(indexes[clip:], np.log10(gradient_norm[clip:]), label="Log of Norm to the Base 10")
+    axs[1].legend()
 
+    _save_fig(task_id, filename)
     plt.show()
-
 
 
 if __name__ == "__main__":
