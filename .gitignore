@@ -1,4 +1,5 @@
 dataset/*.csv
 log/*/*.pth
 log/*/*.txt
-figure/*.png
+log/*/figure/*.png
+log/*/model/*.pth

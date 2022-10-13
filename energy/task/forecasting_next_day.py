@@ -6,10 +6,11 @@ from matplotlib import pyplot as plt
 from torch import nn
 
 from dataset import construct_dataloader, LD2011_2014_summary_by_day
-from helper.plot import plot_forecasting_random_samples
+from helper.plot import plot_forecasting_random_samples_daily
 from model.PeriodicalModel import DailyModel, normal_loss
 
-from helper import log_printf, performance_log, load_task_model, mute_log_plot
+from helper.log import log_printf, performance_log, load_task_model
+from helper import mute_log_plot
 
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
@@ -149,7 +150,7 @@ def train_model():
     performance_log(TASK_ID, "========Best Performance========\n", model=predictor)
     val_loop(val, best_model, loss_function)
     val_loop(test, best_model, loss_function, tag="Test")
-    plot_forecasting_random_samples(best_model, test.dataset, LATITUDE_FACTOR, filename="Performance")
+    plot_forecasting_random_samples_daily(best_model, test.dataset, LATITUDE_FACTOR, filename="Performance")
 
     # 仅供测试
     # best_model.load_state_dict(load_task_model(TASK_ID))
@@ -174,7 +175,7 @@ def test_model():
     with mute_log_plot():
         val_loop(val, predictor, loss_function, tag="Val")
         val_loop(test, predictor, loss_function, tag="Test")
-        plot_forecasting_random_samples(predictor, test.dataset, LATITUDE_FACTOR, filename="Performance")
+        plot_forecasting_random_samples_daily(predictor, test.dataset, LATITUDE_FACTOR, filename="Performance")
 
 
 RANDOM_SEED = 10001

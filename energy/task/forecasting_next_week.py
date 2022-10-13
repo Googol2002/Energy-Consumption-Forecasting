@@ -8,14 +8,15 @@ from torch.utils.data import DataLoader
 
 from dataset import London_11_14_random_select, construct_dataloader
 from dataset.london_clean import London_11_14_set
-from helper.plot import plot_forecasting_random_samples
-from model.PeriodicalModel import WeeklyModel, normal_loss, customize_loss
+from helper.plot import plot_forecasting_random_samples_weekly, plot_training_process
+from model.PeriodicalModel import WeeklyModel, customize_loss
 
-from helper import log_printf, performance_log, load_task_model, mute_log_plot
+from helper.log import log_printf, performance_log, load_task_model, record_training_process
+from helper import mute_log_plot
 
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
-GRADIENT_NORM = 10
+GRADIENT_NORM = 100
 WEIGHT_DECAY = 0.01
 BATCH_SIZE = 16
 HIDDEN_SIZE = 512
@@ -26,7 +27,7 @@ Y_LENGTH = 7
 EPOCH_STEP = 300
 TOLERANCE = 20
 LATITUDE_FACTOR = 1
-LEARNING_RATE = 5 * 0.001
+LEARNING_RATE = 5e-3
 MEANS_SCALE_FACTOR = 1000
 VARIANCES_SCALE_FACTOR = 100000
 VARIANCES_DECAY = 2 * 1e-5
@@ -51,7 +52,6 @@ def check_gradient_norm(model):
 def regression_display(model, sample):
     energy_x, energy_y, time_x, time_y = sample
 
-    # TODO: 需要重写
     with torch.no_grad():
         pred = model(energy_x.to(device, dtype=torch.float32),
                      time_x.to(device, dtype=torch.float32),
@@ -97,11 +97,12 @@ def val_loop(dataloader, model, loss_fn, tag="Val"):
     log_printf(TASK_ID, f" Within the Power Generation: {(100 * within / (size * PERIOD * Y_LENGTH)):>0.3f}%")
     log_printf(TASK_ID, f" Utilization Rate:  {(100 * utilization / (size * PERIOD * Y_LENGTH)):>0.3f}%\n")
 
-    return val_loss, 1 - accuracy / (size * PERIOD)
+    return val_loss, 1 - accuracy / (size * PERIOD * Y_LENGTH)
 
 
 def train_loop(dataloader, model, loss_fn, optimizer):
     size = len(dataloader.dataset)
+    total_loss = 0
     for batch, (energy_x, energy_y, time_x, time_y) in enumerate(dataloader):
         energy_x, time_x = energy_x.to(device, dtype=torch.float32), time_x.to(device, dtype=torch.float32)
         energy_y, time_y = energy_y.to(device, dtype=torch.float32), time_y.to(device, dtype=torch.float32)
@@ -117,16 +118,19 @@ def train_loop(dataloader, model, loss_fn, optimizer):
         nn.utils.clip_grad_norm_(model.parameters(), GRADIENT_NORM)
         optimizer.step()
 
+        total_loss += loss.item()
+
         if batch % 10 == 0:
             loss, current = loss.item(), batch * len(energy_x)
             print(f"loss: {loss:>7f} Avg loss: {loss / (energy_x.shape[0] * PERIOD) :>7f}  [{current:>5d}/{size:>5d}]")
 
+    return total_loss / (PERIOD * size)
 
 loss_function = customize_loss(VARIANCES_DECAY)
 
 
 def train_model():
-    dataset = London_11_14_set(train_l=X_LENGTH, test_l=Y_LENGTH, size=3000)
+    dataset = London_11_14_set(train_l=X_LENGTH, test_l=Y_LENGTH, size=3000, times=2)
     train, val, test = construct_dataloader(dataset, batch_size=BATCH_SIZE)
     print(len(dataset))
 
@@ -136,7 +140,8 @@ def train_model():
                             output_size=PERIOD, batch_size=BATCH_SIZE, period=PERIOD,
                             time_size=TIME_SIZE, means=energy_expectations,
                             means_scale_factor=MEANS_SCALE_FACTOR,
-                            variances_scale_factor=VARIANCES_SCALE_FACTOR)
+                            variances_scale_factor=VARIANCES_SCALE_FACTOR,
+                            mlp_sizes=[HIDDEN_SIZE * 2 + TIME_SIZE, HIDDEN_SIZE, HIDDEN_SIZE, 256, 128, 128, 64, PERIOD])
 
     print(TASK_ID + ' model:', predictor)
     adam = torch.optim.Adam(predictor.parameters(), lr=LEARNING_RATE, weight_decay=WEIGHT_DECAY)
@@ -148,7 +153,7 @@ def train_model():
 
     for epoch in range(EPOCH_STEP):
         print("========EPOCH {}========\n".format(epoch))
-        train_loop(train, predictor, loss_function, adam)
+        train_loss = train_loop(train, predictor, loss_function, adam)
         validation_loss, bias = val_loop(val, predictor, loss_function)
         tolerance += 1
         if validation_loss < min_val_loss:
@@ -158,6 +163,7 @@ def train_model():
         if tolerance > TOLERANCE:
             log_printf(TASK_ID, "Early stopped at epoch {}.\n".format(epoch))
             break
+        record_training_process(TASK_ID, train_loss, validation_loss)
 
     best_model.lstm.flatten_parameters()
     performance_log(TASK_ID, "========Best Performance========\n", model=predictor)
@@ -165,9 +171,10 @@ def train_model():
     val_loop(val, best_model, loss_function, tag="Val")
     # val_loop(test, best_model, loss_function, tag="Test")
     # 画图测试
-    display_dataset = DataLoader(val.dataset, batch_size=1, shuffle=True)
-    regression_display(best_model, next(iter(display_dataset)))
-
+    # display_dataset = DataLoader(val.dataset, batch_size=1, shuffle=True)
+    # regression_display(best_model, next(iter(display_dataset)))
+    plot_forecasting_random_samples_weekly(TASK_ID, best_model, val.dataset, LATITUDE_FACTOR, filename="Performance")
+    plot_training_process(TASK_ID, filename="TrainProcess")
 
 def test_model():
     predictor = WeeklyModel(input_size=PERIOD, hidden_size=HIDDEN_SIZE, num_layers=1,
@@ -181,11 +188,12 @@ def test_model():
     with mute_log_plot():
         val_loop(val, predictor, loss_function, tag="Val")
         val_loop(test, predictor, loss_function, tag="Test")
-        plot_forecasting_random_samples(predictor, test.dataset, LATITUDE_FACTOR, filename="Performance")
+        plot_forecasting_random_samples_weekly(predictor, test.dataset, LATITUDE_FACTOR, filename="Performance")
 
 
 RANDOM_SEED = 10001
 torch.cuda.manual_seed(RANDOM_SEED)
 if __name__ == "__main__":
     # test_model()
-    train_model()
+    with mute_log_plot():
+        train_model()

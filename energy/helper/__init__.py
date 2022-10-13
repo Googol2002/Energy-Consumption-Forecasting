@@ -1,5 +1,16 @@
+from collections import namedtuple
 from contextlib import contextmanager
 
-from helper.log import log_printf, performance_log,\
-    load_task_model
-from helper.log import is_muted, mute_log_plot
+LOG_DIRECTORY = r"log"
+
+TrainingProcess = namedtuple('TrainingProcess', ['gradient_norm', 'train_loss', 'val_loss'])
+training_recoder = dict()
+
+# 用于静音log
+is_muted = False
+@contextmanager
+def mute_log_plot():
+    global is_muted
+    is_muted = True
+    yield
+    is_muted = False

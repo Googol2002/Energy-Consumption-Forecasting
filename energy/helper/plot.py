@@ -1,13 +1,14 @@
 import os
 
 import torch
+from torch.utils.data import DataLoader
 
 from dataset import LD2011_2014_summary_by_day
 import matplotlib.pyplot as plt
 import numpy as np
 import random
 
-from helper import is_muted
+from helper import is_muted, LOG_DIRECTORY, training_recoder
 from helper.log import date_tag
 
 FIGURE_DIRECTORY = r"figure"
@@ -41,7 +42,10 @@ def plot_ld2011_2014_summary_means_distribution():
     print(variances)
 
 
-def plot_forecasting_random_samples(model, dataset, factor, row=2, col=3, filename=None):
+def _figure_directory_path(task_id):
+    return os.path.join(LOG_DIRECTORY, task_id, "figure")
+
+def plot_forecasting_random_samples_daily(model, dataset, factor, row=2, col=3, filename=None):
     fig, axs = plt.subplots(row, col, figsize=(col * 6, row * 6))
     fig.tight_layout(pad=5.0)
     indexes = random.sample(range(len(dataset)), row * col)
@@ -65,13 +69,68 @@ def plot_forecasting_random_samples(model, dataset, factor, row=2, col=3, filena
             axs[i][j].set_xlabel("Time")
             axs[i][j].set_ylabel("Energy Consumption")
 
-    if is_muted and filename is not None:
+    if not is_muted and filename is not None:
         folder = os.path.exists(os.path.join(FIGURE_DIRECTORY))
         if not folder:  # 判断是否存在文件夹如果不存在则创建为文件夹
             os.makedirs(os.path.join(FIGURE_DIRECTORY))
         plt.savefig(os.path.join(FIGURE_DIRECTORY, "{}-Date({}).png".format(filename, date_tag)), dpi=300)
 
     plt.show()
+
+
+def plot_forecasting_random_samples_weekly(task_id, model, dataset, factor, size=4, filename=None):
+    fig, axs = plt.subplots(size, 1, figsize=(16, size * 6))
+    fig.tight_layout(pad=5.0)
+    display_dataset = DataLoader(dataset, batch_size=size, shuffle=True)
+
+    batch, (energy_x, energy_y, time_x, time_y) = next(iter(enumerate(display_dataset)))
+    with torch.no_grad():
+        pred = model(energy_x.to(device, dtype=torch.float32),
+                     time_x.to(device, dtype=torch.float32),
+                     time_y.to(device, dtype=torch.float32)).cpu().numpy()
+
+    means_cup, variances_cup = pred[:, :, 0].reshape(size, -1), pred[:, :, 1].reshape(size, -1)
+    energy_y = energy_y.reshape(size, -1).cpu().numpy()
+
+    for i, (y, m, v) in enumerate(zip(energy_y, means_cup, variances_cup)):
+        axs[i].plot(range(y.shape[0]), y)
+        axs[i].plot(range(y.shape[0]), m, color="red")
+        axs[i].fill_between(range(y.shape[0]), m - factor * np.sqrt(v),
+                            m + factor * np.sqrt(v), facecolor='red', alpha=0.3)
+        axs[i].title.set_text("Val Sample[{}]".format(i + 1))
+        axs[i].set_xlabel("Time")
+        axs[i].set_ylabel("Energy Consumption")
+
+    if not is_muted and filename is not None:
+        path = _figure_directory_path(task_id)
+        if not os.path.exists(path):  # 判断是否存在文件夹如果不存在则创建为文件夹
+            os.makedirs(path)
+        plt.savefig(os.path.join(path, "{}-Date({}).png".format(filename, date_tag)), dpi=300)
+
+    plt.show()
+
+
+def plot_training_process(task_id, filename=None):
+    fig, axs = plt.subplots(2, 1, figsize=(12, 12))
+    axs[0].title.set_text("Training Process")
+    axs[0].set_xlabel("Epoch")
+    axs[0].set_ylabel("Loss")
+
+    train_loss = np.asarray(training_recoder[task_id].train_loss)
+    val_loss = np.asarray(training_recoder[task_id].val_loss)
+
+    axs[0].plot(range(len(train_loss)), train_loss, label="Train Loss")
+    axs[0].plot(range(len(val_loss)), val_loss, label="Val Loss")
+    axs[0].legend()
+
+    if not is_muted and filename is not None:
+        path = _figure_directory_path(task_id)
+        if not os.path.exists(path):  # 判断是否存在文件夹如果不存在则创建为文件夹
+            os.makedirs(path)
+        plt.savefig(os.path.join(path, "{}-Date({}).png".format(filename, date_tag)), dpi=300)
+
+    plt.show()
+
 
 
 if __name__ == "__main__":
