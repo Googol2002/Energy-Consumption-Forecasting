@@ -1,4 +1,5 @@
 dataset/*.csv
+dataset/*.npy
 log/*/*.pth
 log/*/*.txt
 log/*/figure/*.png
