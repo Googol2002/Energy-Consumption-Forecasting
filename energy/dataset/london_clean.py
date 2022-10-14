@@ -25,7 +25,7 @@ L 是序列长，L'是答案长,W是24h内的数据点(48)
 SIZE = 10
 TIMES = 10
 Train_length = 10
-Test_length = 3
+Test_length = 7
 
 
 class London_11_14(Dataset):
@@ -331,15 +331,18 @@ class London_11_14_set(London_11_14_random_select):
     :param train_l：X天数
     :param label_l：y天数
     :param test_days：测试集组数（不参与数据增强），实际占天数label_l*test_days
+    :param test_continuous：每组测试集连续天数，默认1
     :param times: 重复抽样次数，10次大致对应3000个元组(x, y, x_1, y_1)
     :param size: 随机抽取的用户数量，上限5068
     :param test_list: 需要在训练集去除的样本
     """
 
-    def __init__(self, train_l=Train_length, label_l=Test_length, test_days=10, size=SIZE, times=TIMES,test_list=None):
+    def __init__(self, train_l=Train_length, label_l=Test_length,
+                 test_days=10,test_continuous=1,size=SIZE, times=TIMES,test_list=None):
         self.train_l = train_l
         self.label_l = label_l
-        self.test_days = test_days*label_l
+        self.test_continuous=test_continuous
+        self.test_days = test_days*(label_l+self.test_continuous-1)#test实际占据天数
         self.size = size
         self.times = times
         self.test_list=test_list if test_list else []#解决list=[]传递异常
@@ -369,7 +372,7 @@ class London_11_14_set(London_11_14_random_select):
             self.expectations = merge_e(self.expectations, len(self.lst), e, other.counts - 110)
 
             for j in range(110, len(other)):  # 扔掉前110天用户数少的情况
-                if(conflict_with_test(j,self.label_l,self.test_list)==False):
+                if(conflict_with_test(j,self.label_l+self.test_continuous-1,self.test_list)==False):
                 #if j not in self.test_list:
                     self.lst.append(other[j])
 
@@ -393,26 +396,30 @@ class London_11_14_set_test(Dataset):
     :param train_l：X天数
     :param label_l：y天数
     :param test_days：测试集组数（不参与数据增强），实际占天数label_l*test_days
+    :param test_continuous：每组测试集连续天数，默认1
     :param times: 重复抽样次数，10次大致对应3000个元组(x, y, x_1, y_1)
     :param size: 随机抽取的用户数量，上限5068
     """
 
-    def __init__(self, train_l=Train_length, label_l=Test_length, test_days=10, size=SIZE, times=TIMES):
+    def __init__(self, train_l=Train_length, label_l=Test_length, test_days=10,
+                 test_continuous=1,size=SIZE, times=TIMES):
         #super().__init__(train_l=Train_length, label_l=Test_length, test_days=70, size=SIZE, times=TIMES)
         self.train_l = train_l
         self.label_l = label_l
-        self.test_days = test_days*label_l
+        self.test_continuous = test_continuous
+        self.test_days = test_days * (label_l + self.test_continuous - 1)  # test实际占据天数
         self.size = size
         self.times = times
         self.days = 488 - self.train_l - self.label_l
         self.train_days = self.days - self.test_days
-        self.test_list = sorted(random.sample(list(range(111, self.days)), self.test_days))
+        self.test_list = sorted(random.sample(list(range(110+self.test_continuous, self.days)), self.test_days))
         print("test_list:", self.test_list)
         self.data_test=[]
         other = London_11_14_random_select(train_l=self.train_l, test_l=self.label_l, size=self.size)
         # 取出测试集
         for k in range(len(self.test_list)):
-            self.data_test.append(other[self.test_list[k]])
+            for m in range(self.test_continuous):
+                self.data_test.append(other[self.test_list[k]-m])
     def __len__(self):
         return len(self.data_test)
     def __getitem__(self, index):
@@ -424,15 +431,18 @@ class London_11_14_set_test(Dataset):
         return self.test_list
 
 
-def createDataSet(train_l=Train_length, label_l=Test_length, test_days=10, size=SIZE, times=TIMES):
+def createDataSet(train_l=Train_length, label_l=Test_length, test_days=10,
+                  test_continuous=1,size=SIZE, times=TIMES):
     """
         :param train_l：X天数
         :param label_l：y天数
         :param test_days：测试集组数（不参与数据增强），实际占天数label_l*test_days
+        :param test_continuous：每组测试集连续天数，默认1
         :param times: 重复抽样次数，10次大致对应3000个元组(x, y, x_1, y_1)
         :param size: 随机抽取的用户数量，上限5068
     """
-    set2 = London_11_14_set_test(train_l=train_l, label_l=label_l, test_days=test_days, size=size, times=times)
-    set1 = London_11_14_set(train_l=train_l, label_l=label_l, test_days=test_days, size=size, times=times,test_list=set2.get_test_list())
+    set2 = London_11_14_set_test(train_l=train_l, label_l=label_l, test_days=test_days,test_continuous=test_continuous, size=size, times=times)
+    set1 = London_11_14_set(train_l=train_l, label_l=label_l, test_days=test_days,test_continuous=test_continuous, size=size, times=times,test_list=set2.get_test_list())
+    print("train_l=",train_l,"label_l=",label_l,"test_days=",test_days,"test_continuous=",test_continuous)
     e,v=set1.statistics()
     return set1, set2,e,v

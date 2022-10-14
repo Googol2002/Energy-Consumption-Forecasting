@@ -52,14 +52,16 @@ from energy.dataset.london_clean import London_11_14_set_test,London_11_14_set,c
 # print(type(dataset.dataset),dataset.dataset.shape)
 #print(type(dataset))
 """
-    :param train_l：训练集天数
-    :param test_l：测试集天数
-    :param times: 重复抽样次数，10次大致对应4000个元组(x, y, x_1, y_1)
+    :param train_l：X天数
+    :param label_l：y天数
+    :param test_days：测试集组数（不参与数据增强），实际占天数label_l*test_days
+    :param test_continuous：每组测试集连续天数，默认1
+    :param times: 重复抽样次数，10次大致对应3000个元组(x, y, x_1, y_1)
     :param size: 随机抽取的用户数量，上限5068
-    总元组数公式：times*(378-train_l-train_l-test_days)
-    """
+    测试集个数=label_l*test_days*test_continuous
+"""
 begin=time.time()
-set1,set2,expectations,variances=createDataSet(train_l=10, label_l=7, test_days=10,size=3000,times=1)
+set1,set2,expectations,variances=createDataSet(train_l=10, label_l=7, test_days=5,test_continuous=3,size=3000,times=1)
 #data_set=London_11_14_set(train_l=5, label_l=1, size=3000,times=10)#time for set: 11.827157974243164
 end=time.time()
 
