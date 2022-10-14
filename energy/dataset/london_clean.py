@@ -336,13 +336,13 @@ class London_11_14_set(London_11_14_random_select):
     :param test_list: 需要在训练集去除的样本
     """
 
-    def __init__(self, train_l=Train_length, label_l=Test_length, test_days=70, size=SIZE, times=TIMES,test_list=[]):
+    def __init__(self, train_l=Train_length, label_l=Test_length, test_days=70, size=SIZE, times=TIMES,test_list=None):
         self.train_l = train_l
         self.label_l = label_l
         self.test_days = test_days
         self.size = size
         self.times = times
-        self.test_list=test_list
+        self.test_list=test_list if test_list else []#解决list=[]传递异常
         self.expectations, self.variances = 0.0, 0.0
 
         def merge_e(x, m, y, n):
