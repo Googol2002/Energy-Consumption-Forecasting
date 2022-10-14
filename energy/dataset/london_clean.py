@@ -398,7 +398,7 @@ class London_11_14_set_test(Dataset):
         self.times = times
         self.days = 378 - self.train_l - self.label_l
         self.train_days = self.days - self.test_days
-        self.test_list = random.sample(list(range(1, self.days)), self.test_days)
+        self.test_list = sorted(random.sample(list(range(1, self.days)), self.test_days))
         print("test_list:", self.test_list)
         self.data_test=[]
         other = London_11_14_random_select(train_l=self.train_l, test_l=self.label_l, size=self.size)

@@ -59,7 +59,7 @@ from energy.dataset.london_clean import London_11_14_set_test,London_11_14_set,c
     总元组数公式：times*(378-train_l-train_l)
     """
 begin=time.time()
-set1,set2,expectations,variances=createDataSet(train_l=5, label_l=1, test_days=70,size=3000,times=10)
+set1,set2,expectations,variances=createDataSet(train_l=10, label_l=7, test_days=70,size=3000,times=5)
 #data_set=London_11_14_set(train_l=5, label_l=1, size=3000,times=10)#time for set: 11.827157974243164
 end=time.time()
 
