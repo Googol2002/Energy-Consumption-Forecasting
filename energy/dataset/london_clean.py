@@ -424,11 +424,11 @@ class London_11_14_set_test(Dataset):
         return self.test_list
 
 
-def createDataSet(train_l=Train_length, label_l=Test_length, test_days=70, size=SIZE, times=TIMES):
+def createDataSet(train_l=Train_length, label_l=Test_length, test_days=10, size=SIZE, times=TIMES):
     """
         :param train_l：X天数
         :param label_l：y天数
-        :param test_days：测试集总天数（不参与数据增强）
+        :param test_days：测试集组数（不参与数据增强），实际占天数label_l*test_days
         :param times: 重复抽样次数，10次大致对应3000个元组(x, y, x_1, y_1)
         :param size: 随机抽取的用户数量，上限5068
     """
