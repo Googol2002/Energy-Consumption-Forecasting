@@ -330,16 +330,16 @@ class London_11_14_set(London_11_14_random_select):
     """
     :param train_l：X天数
     :param label_l：y天数
-    :param test_days：测试集总天数（不参与数据增强）
+    :param test_days：测试集组数（不参与数据增强），实际占天数label_l*test_days
     :param times: 重复抽样次数，10次大致对应3000个元组(x, y, x_1, y_1)
     :param size: 随机抽取的用户数量，上限5068
     :param test_list: 需要在训练集去除的样本
     """
 
-    def __init__(self, train_l=Train_length, label_l=Test_length, test_days=70, size=SIZE, times=TIMES,test_list=None):
+    def __init__(self, train_l=Train_length, label_l=Test_length, test_days=10, size=SIZE, times=TIMES,test_list=None):
         self.train_l = train_l
         self.label_l = label_l
-        self.test_days = test_days
+        self.test_days = test_days*label_l
         self.size = size
         self.times = times
         self.test_list=test_list if test_list else []#解决list=[]传递异常
@@ -355,6 +355,13 @@ class London_11_14_set(London_11_14_random_select):
 
         self.lst = []
 
+        #判断当前index加入train后是否造成test泄露
+        def conflict_with_test(index,size,lst):
+            for i in range(size):
+                if index+i in lst:
+                    return True
+            return False
+
         for i in range(self.times):
             other = London_11_14_random_select(train_l=self.train_l, test_l=self.label_l, size=self.size)
             e, v = other.statistics(110)
@@ -362,7 +369,8 @@ class London_11_14_set(London_11_14_random_select):
             self.expectations = merge_e(self.expectations, len(self.lst), e, other.counts - 110)
 
             for j in range(110, len(other)):  # 扔掉前110天用户数少的情况
-                if j not in self.test_list:
+                if(conflict_with_test(j,self.label_l,self.test_list)==False):
+                #if j not in self.test_list:
                     self.lst.append(other[j])
 
         self.arr = np.array(self.lst, dtype=object)
@@ -384,21 +392,21 @@ class London_11_14_set_test(Dataset):
     """
     :param train_l：X天数
     :param label_l：y天数
-    :param test_days：测试集总天数（不参与数据增强）
+    :param test_days：测试集组数（不参与数据增强），实际占天数label_l*test_days
     :param times: 重复抽样次数，10次大致对应3000个元组(x, y, x_1, y_1)
     :param size: 随机抽取的用户数量，上限5068
     """
 
-    def __init__(self, train_l=Train_length, label_l=Test_length, test_days=70, size=SIZE, times=TIMES):
+    def __init__(self, train_l=Train_length, label_l=Test_length, test_days=10, size=SIZE, times=TIMES):
         #super().__init__(train_l=Train_length, label_l=Test_length, test_days=70, size=SIZE, times=TIMES)
         self.train_l = train_l
         self.label_l = label_l
-        self.test_days = test_days
+        self.test_days = test_days*label_l
         self.size = size
         self.times = times
-        self.days = 378 - self.train_l - self.label_l
+        self.days = 488 - self.train_l - self.label_l
         self.train_days = self.days - self.test_days
-        self.test_list = sorted(random.sample(list(range(1, self.days)), self.test_days))
+        self.test_list = sorted(random.sample(list(range(111, self.days)), self.test_days))
         print("test_list:", self.test_list)
         self.data_test=[]
         other = London_11_14_random_select(train_l=self.train_l, test_l=self.label_l, size=self.size)
