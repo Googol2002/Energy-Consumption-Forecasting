@@ -114,6 +114,41 @@ def plot_forecasting_random_samples_weekly(task_id, model, dataset, factor, size
     plt.show()
 
 
+def plot_sensitivity_curve_weekly(task_id, model, dataset, tolerance_range=None, filename=None):
+    tolerance_range = tolerance_range if tolerance_range else (0, 2)
+    dataloader = DataLoader(dataset, batch_size=64, shuffle=True)
+    size, shape = len(dataset), dataset[0][1].shape
+
+    @np.vectorize
+    def evaluate(tolerance):
+        within, utilization = 0, 0
+        with torch.no_grad():
+            for (energy_x, energy_y, time_x, time_y) in dataloader:
+                energy_x, time_x = energy_x.to(device, dtype=torch.float32), time_x.to(device, dtype=torch.float32)
+                energy_y, time_y = energy_y.to(device, dtype=torch.float32), time_y.to(device, dtype=torch.float32)
+
+                pred = model(energy_x, time_x, time_y)
+
+                means = pred[:, :, 0]
+                variances = pred[:, :, 1]
+                within += torch.sum(energy_y <= means + tolerance * torch.sqrt(variances))
+                utilization += torch.sum(energy_y / (means + tolerance * torch.sqrt(variances)))
+
+        return 100 * within.cpu() / (size * shape[0] * shape[1]), 100 * utilization.cpu() / (size * shape[0] * shape[1])
+
+    roc = evaluate(np.linspace(tolerance_range[0], tolerance_range[-1], 50))
+
+    plt.plot(roc[0], roc[1])
+    plt.grid()
+    plt.xlabel("Within the Power Generation(%)")
+    plt.ylabel("Utilization Rate(%)")
+    plt.xticks(np.arange((min(roc[0]) // 5) * 5, 101, 5))
+    plt.yticks(np.arange((min(roc[1]) // 5) * 5, 101, 5))
+    plt.title("Sensitivity Curve")
+    _save_fig(task_id, filename=filename)
+    plt.show()
+
+
 CLIP = 10
 def plot_training_process(task_id, filename=None):
     fig, axs = plt.subplots(2, 1, figsize=(12, 12))

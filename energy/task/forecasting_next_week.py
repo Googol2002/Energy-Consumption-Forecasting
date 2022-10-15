@@ -8,7 +8,7 @@ from torch.utils.data import DataLoader
 
 from dataset import London_11_14_random_select, construct_dataloader
 from dataset.london_clean import London_11_14_set, createDataSet
-from helper.plot import plot_forecasting_random_samples_weekly, plot_training_process
+from helper.plot import plot_forecasting_random_samples_weekly, plot_training_process, plot_sensitivity_curve_weekly
 from model.PeriodicalModel import WeeklyModel, customize_loss
 
 from helper.log import log_printf, performance_log, load_task_model, record_training_process
@@ -107,7 +107,7 @@ def train_loop(dataloader, model, loss_fn, optimizer):
         energy_x, time_x = energy_x.to(device, dtype=torch.float32), time_x.to(device, dtype=torch.float32)
         energy_y, time_y = energy_y.to(device, dtype=torch.float32), time_y.to(device, dtype=torch.float32)
         # Gaussian Noise 对抗过拟合
-        # energy_x += (torch.randn(energy_x.shape, device=device) * 2)
+        energy_x += (torch.randn(energy_x.shape, device=device) * 2)
 
         # Compute prediction and loss
         pred = model(energy_x, time_x, time_y)
@@ -140,12 +140,12 @@ def train_model():
 
     # 新的数据集切分方式
     train_set, val_and_test_set, energy_expectations, energy_variances = createDataSet(
-        train_l=X_LENGTH, label_l=Y_LENGTH, test_days=5, test_continuous=3, size=3500, times=10)
-    # val, test = construct_dataloader(val_and_test_set, train_ratio=0.5,
-    #                                  validation_ratio=0.5, test_ratio=0,
-    #                                  batch_size=BATCH_SIZE)
+        train_l=X_LENGTH, label_l=Y_LENGTH, test_days=10, test_continuous=3, size=3500, times=10)
+    val, test = construct_dataloader(val_and_test_set, train_ratio=0.5,
+                                     validation_ratio=0.5, test_ratio=0,
+                                     batch_size=BATCH_SIZE)
     train = DataLoader(train_set, batch_size=BATCH_SIZE, shuffle=True)
-    val = DataLoader(val_and_test_set, batch_size=BATCH_SIZE)
+    # val = DataLoader(val_and_test_set, batch_size=BATCH_SIZE)
     print(len(train_set), len(val_and_test_set))
 
     predictor = WeeklyModel(input_size=PERIOD, hidden_size=HIDDEN_SIZE, num_layers=1,
@@ -181,13 +181,14 @@ def train_model():
     performance_log(TASK_ID, "========Best Performance========\n", model=predictor)
     val_loop(train, best_model, loss_function, tag="Train")
     val_loop(val, best_model, loss_function, tag="Val")
-    # val_loop(test, best_model, loss_function, tag="Test")
-    # val_loop(test, best_model, loss_function, tag="Test")
+    val_loop(test, best_model, loss_function, tag="Test")
     # 画图测试
     # display_dataset = DataLoader(val.dataset, batch_size=1, shuffle=True)
     # regression_display(best_model, next(iter(display_dataset)))
     plot_forecasting_random_samples_weekly(TASK_ID, best_model, val.dataset, LATITUDE_FACTOR, filename="Performance")
     plot_training_process(TASK_ID, filename="TrainProcess")
+    plot_sensitivity_curve_weekly(TASK_ID, best_model, val.dataset, filename="SensitivityCurve")
+
 
 def test_model():
     predictor = WeeklyModel(input_size=PERIOD, hidden_size=HIDDEN_SIZE, num_layers=1,
