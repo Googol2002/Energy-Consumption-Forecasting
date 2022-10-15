@@ -186,14 +186,15 @@ def construct_dataloader(raw_dataset, batch_size=BATCH_SIZE,
     if train_ratio + validation_ratio + test_ratio != 1:
         raise ValueError("The sum of train_ratio, validation_ratio and test_ratio doesn't equal to One.")
 
-    train_dataset, val_dataset, test_dataset = random_split(
+    lengths = [round(train_ratio * len(raw_dataset)), round(validation_ratio * len(raw_dataset)),
+               len(raw_dataset) - round(train_ratio * len(raw_dataset)) -
+               round(validation_ratio * len(raw_dataset))] if test_ratio > 0 else [
+        round(train_ratio * len(raw_dataset)), len(raw_dataset) - round(train_ratio * len(raw_dataset))]
+
+    datasets = random_split(
         dataset=raw_dataset,
-        lengths=[round(train_ratio * len(raw_dataset)),
-                 round(validation_ratio * len(raw_dataset)),
-                 len(raw_dataset) - round(train_ratio * len(raw_dataset)) -
-                 round(validation_ratio * len(raw_dataset))],
+        lengths=lengths,
         generator=torch.Generator().manual_seed(RANDOM_SEED)
     )
 
-    return DataLoader(train_dataset, batch_size=batch_size), DataLoader(val_dataset, batch_size=batch_size), \
-           DataLoader(test_dataset, batch_size=batch_size)
+    return (DataLoader(d, batch_size=batch_size) for d in datasets)
