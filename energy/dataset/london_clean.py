@@ -332,7 +332,7 @@ class London_11_14_set(London_11_14_random_select):
     :param label_l：y天数
     :param test_days：测试集组数（不参与数据增强），实际占天数label_l*test_days
     :param test_continuous：每组测试集连续天数，默认1
-    :param times: 重复抽样次数，10次大致对应3000个元组(x, y, x_1, y_1)
+    :param times: 训练集重复抽样次数，10次大致对应3000个元组(x, y, x_1, y_1)
     :param size: 随机抽取的用户数量，上限5068
     :param test_list: 需要在训练集去除的样本
     """
@@ -397,7 +397,7 @@ class London_11_14_set_test(Dataset):
     :param label_l：y天数
     :param test_days：测试集组数（不参与数据增强），实际占天数label_l*test_days
     :param test_continuous：每组测试集连续天数，默认1
-    :param times: 重复抽样次数，10次大致对应3000个元组(x, y, x_1, y_1)
+    :param times: 测试集重复抽样次数
     :param size: 随机抽取的用户数量，上限5068
     """
 
@@ -407,19 +407,24 @@ class London_11_14_set_test(Dataset):
         self.train_l = train_l
         self.label_l = label_l
         self.test_continuous = test_continuous
+        self.test_groups=test_days
         self.test_days = test_days * (label_l + self.test_continuous - 1)  # test实际占据天数
         self.size = size
         self.times = times
         self.days = 488 - self.train_l - self.label_l
         self.train_days = self.days - self.test_days
-        self.test_list = sorted(random.sample(list(range(110+self.test_continuous, self.days)), self.test_days))
+        self.test_list = sorted(random.sample(list(range(110+self.test_continuous, self.days)), self.test_groups))
         print("test_list:", self.test_list)
         self.data_test=[]
         other = London_11_14_random_select(train_l=self.train_l, test_l=self.label_l, size=self.size)
         # 取出测试集
-        for k in range(len(self.test_list)):
-            for m in range(self.test_continuous):
-                self.data_test.append(other[self.test_list[k]-m])
+        for i in range(self.times):
+            other = London_11_14_random_select(train_l=self.train_l, test_l=self.label_l, size=self.size)
+            for k in range(len(self.test_list)):
+                for m in range(self.test_continuous):
+                    self.data_test.append(other[self.test_list[k]-m])
+            self.arr = np.array(self.data_test, dtype=object)
+            self.counts = len(self.data_test)
     def __len__(self):
         return len(self.data_test)
     def __getitem__(self, index):
@@ -438,7 +443,7 @@ def createDataSet(train_l=Train_length, label_l=Test_length, test_days=10,
         :param label_l：y天数
         :param test_days：测试集组数（不参与数据增强），实际占天数label_l*test_days
         :param test_continuous：每组测试集连续天数，默认1
-        :param times: 重复抽样次数，10次大致对应3000个元组(x, y, x_1, y_1)
+        :param times: 训练集和测试集的重复抽样次数
         :param size: 随机抽取的用户数量，上限5068
     """
     set2 = London_11_14_set_test(train_l=train_l, label_l=label_l, test_days=test_days,test_continuous=test_continuous, size=size, times=times)

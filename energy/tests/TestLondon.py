@@ -61,7 +61,7 @@ from energy.dataset.london_clean import London_11_14_set_test,London_11_14_set,c
     测试集个数=label_l*test_days*test_continuous
 """
 begin=time.time()
-set1,set2,expectations,variances=createDataSet(train_l=10, label_l=7, test_days=5,test_continuous=3,size=3000,times=1)
+set1,set2,expectations,variances=createDataSet(train_l=10, label_l=7, test_days=3,test_continuous=5,size=3000,times=5)
 #data_set=London_11_14_set(train_l=5, label_l=1, size=3000,times=10)#time for set: 11.827157974243164
 end=time.time()
 
