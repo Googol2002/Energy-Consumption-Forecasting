@@ -419,5 +419,4 @@ def createDataSet(train_l=Train_length, label_l=Test_length, test_days=10,
     print("train_l=", train_l, "label_l=", label_l, "test_days=", test_days, "test_continuous=", test_continuous,
           'size=', size, 'times=', times, "ev_key=", ev_key)
     e, v = set1.statistics()
-    lst = [set1, set2, e, v]
-    return lst
+    return set1, set2, e, v
