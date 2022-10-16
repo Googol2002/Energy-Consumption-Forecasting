@@ -10,7 +10,7 @@ from energy.dataset import LD2011_2014_summary
 # Load/split your data
 dataset = LD2011_2014_summary(0)
 y = dataset.dataset
-train, test = y[:28*24*4], y[28*24*4:35*24*4]
+train, test = y[:56*24*4], y[56*24*4:70*24*4]
 
 # Fit your model
 model = pm.auto_arima(train, seasonal=True, m=train.shape[0] // (4 * 24))
