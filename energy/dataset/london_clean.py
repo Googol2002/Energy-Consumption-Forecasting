@@ -17,7 +17,6 @@ import torch
 # import tensorflow as tf
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
-
 """
 最后的输出格式：X, y,X_1,y_1
 X:L * W, y:L' * W,X_1:L * 19, y_1:L' * 19
@@ -205,7 +204,7 @@ class London_11_14_random_select(Dataset):
         df_data = pd.DataFrame(np.load('dataset/london_data.npy'))
         df_date = pd.read_csv('dataset/london_date.csv', header=0, decimal=",", na_filter=False)
         self.df = pd.merge(df_date, df_data, how='outer', right_index=True, left_index=True)
-        self.df = self.df.drop(self.df.index[:110 * 48], axis=0)#前110天只有3000户有值，后面都是5000户，删！
+        self.df = self.df.drop(self.df.index[:110 * 48], axis=0)  # 前110天只有3000户有值，后面都是5000户，删！
         self.init_columns = self.df.shape[1] - 1
         self.delete_columns = self.init_columns - self.size
 
@@ -256,25 +255,24 @@ class London_11_14_random_select(Dataset):
     def __add__(self, other):
         return pd.concat(self, other)
 
-    def statistics(self,lens):
+    def statistics(self, lens):
         """
         :param lens: 期望方差的长度（一天48，一周7*48）
         """
         # assert (skipdays < self.counts)
         # a = np.delete(self.dataset, np.s_[:skipdays*48], axis=0)
-        offset=self.dataset.shape[0]%(48*lens)
-        #print('unused days for e and v:',int(offset/48),'days')
-        if offset!=0:
-            a=np.delete(self.dataset, np.s_[-offset:], axis=0)
-            c = a.reshape(-1, 48*lens)
+        offset = self.dataset.shape[0] % (48 * lens)
+        # print('unused days for e and v:',int(offset/48),'days')
+        if offset != 0:
+            a = np.delete(self.dataset, np.s_[-offset:], axis=0)
+            c = a.reshape(-1, 48 * lens)
         else:
-            c=self.dataset.reshape(-1, 48*lens)
+            c = self.dataset.reshape(-1, 48 * lens)
         # expectations =tf.reduce_mean(,axis=0)
         expectations = np.mean(c, axis=0)
         # variances = tf.reduce_mean(tf.cast(a, tf.float32), axis=0)
         variances = np.var(c, axis=0)
         return expectations, variances
-
 
 
 class London_11_14_set(London_11_14_random_select):
@@ -289,15 +287,15 @@ class London_11_14_set(London_11_14_random_select):
     :param ev_key: 期望和方差的统计意义，=1代表一天48列，=7代表一周48*7列
     """
 
-    def __init__(self, train_l=Train_length, label_l=Test_length,test_days=10,
-                 test_continuous=1,size=SIZE, times=TIMES,test_list=None,ev_key=1):
+    def __init__(self, train_l=Train_length, label_l=Test_length, test_days=10,
+                 test_continuous=1, size=SIZE, times=TIMES, test_list=None, ev_key=1):
         self.train_l = train_l
         self.label_l = label_l
-        self.test_continuous=test_continuous
-        self.test_days = test_days*(label_l+self.test_continuous-1)#test实际占据天数
+        self.test_continuous = test_continuous
+        self.test_days = test_days * (label_l + self.test_continuous - 1)  # test实际占据天数
         self.size = size
         self.times = times
-        self.test_list=test_list if test_list else []#解决list=[]传递异常
+        self.test_list = test_list if test_list else []  # 解决list=[]传递异常
         self.expectations, self.variances = 0.0, 0.0
 
         def merge_e(x, m, y, n):
@@ -310,22 +308,22 @@ class London_11_14_set(London_11_14_random_select):
 
         self.lst = []
 
-        #判断当前index加入train后是否造成test泄露
-        def conflict_with_test(index,size,lst):
+        # 判断当前index加入train后是否造成test泄露
+        def conflict_with_test(index, size, lst):
             for i in range(size):
-                if index+i in lst:
+                if index + i in lst:
                     return True
             return False
 
         for i in range(self.times):
             other = London_11_14_random_select(train_l=self.train_l, test_l=self.label_l, size=self.size)
             e, v = other.statistics(ev_key)
-            self.variances = merge_v(self.variances, len(self.lst), v, other.counts , self.expectations, e)
-            self.expectations = merge_e(self.expectations, len(self.lst), e, other.counts )
+            self.variances = merge_v(self.variances, len(self.lst), v, other.counts, self.expectations, e)
+            self.expectations = merge_e(self.expectations, len(self.lst), e, other.counts)
 
-            for j in range( len(other)):
-                if(conflict_with_test(j,self.label_l+self.test_continuous-1,self.test_list)==False):
-                #if j not in self.test_list:
+            for j in range(len(other)):
+                if (conflict_with_test(j, self.label_l + self.test_continuous - 1, self.test_list) == False):
+                    # if j not in self.test_list:
                     self.lst.append(other[j])
 
         self.arr = np.array(self.lst, dtype=object)
@@ -354,12 +352,12 @@ class London_11_14_set_test(Dataset):
     """
 
     def __init__(self, train_l=Train_length, label_l=Test_length, test_days=10,
-                 test_continuous=1,size=SIZE, times=TIMES):
-        #super().__init__(train_l=Train_length, label_l=Test_length, test_days=70, size=SIZE, times=TIMES)
+                 test_continuous=1, size=SIZE, times=TIMES):
+        # super().__init__(train_l=Train_length, label_l=Test_length, test_days=70, size=SIZE, times=TIMES)
         self.train_l = train_l
         self.label_l = label_l
         self.test_continuous = test_continuous
-        self.test_groups=test_days
+        self.test_groups = test_days
         self.test_days = test_days * (label_l + self.test_continuous - 1)  # test实际占据天数
         self.size = size
         self.times = times
@@ -367,39 +365,44 @@ class London_11_14_set_test(Dataset):
         self.train_days = self.days - self.test_days
         self.test_list = sorted(random.sample(list(range(self.test_continuous, self.days)), self.test_groups))
         print("test_list:", self.test_list)
-        self.data_test=[]
+        self.data_test = []
         other = London_11_14_random_select(train_l=self.train_l, test_l=self.label_l, size=self.size)
         # 取出测试集
         for i in range(self.times):
             other = London_11_14_random_select(train_l=self.train_l, test_l=self.label_l, size=self.size)
             for k in range(len(self.test_list)):
                 for m in range(self.test_continuous):
-                    self.data_test.append(other[self.test_list[k]-m])
+                    self.data_test.append(other[self.test_list[k] - m])
             self.arr = np.array(self.data_test, dtype=object)
             self.counts = len(self.data_test)
+
     def __len__(self):
         return len(self.data_test)
+
     def __getitem__(self, index):
-        assert (index==0 or index < self.__len__())
+        assert (index == 0 or index < self.__len__())
         x, y, x_1, y_1 = self.data_test[index]
         return x, y, x_1, y_1
 
     def get_test_list(self):
         return self.test_list
 
-#尝试一个记录时间装饰器，事实上关键字参数不好传递？
+
+# 尝试一个记录时间装饰器，事实上关键字参数不好传递？
 def record_time(func):
-    def wrapper(*args, **kwargs):#包装带参函数
+    def wrapper(*args, **kwargs):  # 包装带参函数
         start_time = time.perf_counter()
-        a=func(*args, **kwargs)#包装带参函数
+        a = func(*args, **kwargs)  # 包装带参函数
         end_time = time.perf_counter()
         print('time=', end_time - start_time)
-        return a#有返回值的函数必须给个返回
+        return a  # 有返回值的函数必须给个返回
+
     return wrapper
+
 
 @record_time
 def createDataSet(train_l=Train_length, label_l=Test_length, test_days=10,
-                  test_continuous=1,size=SIZE, times=TIMES,ev_key=1):
+                  test_continuous=1, size=SIZE, times=TIMES, ev_key=1):
     """
         :param train_l：X天数
         :param label_l：y天数
@@ -409,10 +412,12 @@ def createDataSet(train_l=Train_length, label_l=Test_length, test_days=10,
         :param size: 随机抽取的用户数量，上限5068
         :param ev_key: 期望和方差的统计意义，=1代表一天48列，=7代表一周48*7列
     """
-    set2 = London_11_14_set_test(train_l=train_l, label_l=label_l, test_days=test_days,test_continuous=test_continuous, size=size, times=times)
-    set1 = London_11_14_set(train_l=train_l, label_l=label_l, test_days=test_days,test_continuous=test_continuous,
-                            size=size, times=times,test_list=set2.get_test_list(),ev_key=ev_key)
-    print("train_l=",train_l,"label_l=",label_l,"test_days=",test_days,"test_continuous=",test_continuous,'size=',size,'times=',times,"ev_key=",ev_key)
-    e,v=set1.statistics()
-    lst=[set1, set2,e,v]
+    set2 = London_11_14_set_test(train_l=train_l, label_l=label_l, test_days=test_days, test_continuous=test_continuous,
+                                 size=size, times=times)
+    set1 = London_11_14_set(train_l=train_l, label_l=label_l, test_days=test_days, test_continuous=test_continuous,
+                            size=size, times=times, test_list=set2.get_test_list(), ev_key=ev_key)
+    print("train_l=", train_l, "label_l=", label_l, "test_days=", test_days, "test_continuous=", test_continuous,
+          'size=', size, 'times=', times, "ev_key=", ev_key)
+    e, v = set1.statistics()
+    lst = [set1, set2, e, v]
     return lst
