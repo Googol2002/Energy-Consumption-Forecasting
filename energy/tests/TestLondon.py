@@ -93,24 +93,33 @@ print("train_lens:", len(set1), "test_lens:", len(set2))
 # print(variances)
 
 ##直接用日或周均值来预测的效果
-ev_key=7
-accuracy = []
-for j in range(5):
-    dataset = London_11_14_random_select(train_l=7, test_l=7, size=3000)
-    accuracy_t = 0
-    for i in range(len(dataset)):
-        x, y, x1, y1 = dataset[i]
-        e,_=dataset.statistics(ev_key)#=1代表一天，=7代表一周
-        e=e.reshape(-1,48)
-        accuracy_t += np.mean(1 - np.abs((e - y) / y))
-    print("[{}/{}]".format(j+1, 10))
+def direct_predict(ev_key=1,epoch=10):
+    """
+    :param ev_key: =0代表用相邻周，=1用日均值，=7用周均值
+    """
+    accuracy = []
+    for j in range(epoch):
+        dataset = London_11_14_random_select(train_l=7, test_l=7, size=3000)
+        accuracy_t = 0
+        times=0
+        for i in range(len(dataset)):
+            if(ev_key>0 and i%ev_key==0):#dataset是一天断的，跳开才有意义
+                x, y, x1, y1 = dataset[i]
+                e,_=dataset.statistics(ev_key)#=1代表一天，=7代表一周
+                e=e.reshape(-1,48)
+                accuracy_t += np.mean(1 - np.abs((e - y) / y))
+                times+=1
+            elif(ev_key==0):
+                x, y, x1, y1 = dataset[i]
+                accuracy_t += np.mean(1 - np.abs((x - y) / y))
+                times += 1
+        print("[{}/{}]".format(j+1, epoch))
 
-    accuracy_t /= len(dataset)
-    accuracy_t *= 100
-    accuracy.append(accuracy_t)
+        accuracy_t *= (100/times)
+        accuracy.append(accuracy_t)
 
-print(f"Accuracy: {accuracy} \nMean:{np.mean(accuracy)} using {ev_key} days of expectations")
-
+    print(f"Accuracy: {accuracy} \nMean:{np.mean(accuracy)} using {ev_key} days of expectations")
+direct_predict(ev_key=7,epoch=20)
 # START=0
 # END=dataset.days-1
 # dataset_axis = np.arange(dataset.dataset.shape[0])
