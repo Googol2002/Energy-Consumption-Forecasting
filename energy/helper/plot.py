@@ -176,6 +176,29 @@ def plot_training_process(task_id, filename=None):
     _save_fig(task_id, filename)
     plt.show()
 
+def primitive_plot_forecasting_random_samples_weekly(task_id, dataset, size=4, filename=None):
+    fig, axs = plt.subplots(size, 1, figsize=(16, size * 6))
+    fig.tight_layout(pad=5.0)
+    display_dataset = DataLoader(dataset, batch_size=size, shuffle=True)
+
+    batch, (energy_x, energy_y, time_x, time_y) = next(iter(enumerate(display_dataset)))
+
+    
+    energy_y = energy_y.reshape(size, -1).numpy()
+    energy_x = energy_x.reshape(size, -1).numpy()
+
+    for i, (y, y_pre) in enumerate(zip(energy_y, energy_x)):
+        axs[i].plot(range(y.shape[0]), y)
+        axs[i].plot(range(y.shape[0]), y_pre, color="red")
+        axs[i].title.set_text("Val Sample[{}]".format(i + 1))
+        axs[i].set_xlabel("Time")
+        axs[i].set_ylabel("Energy Consumption")
+
+    _save_fig(task_id, filename)
+    plt.show()
+
 
 if __name__ == "__main__":
     plot_ld2011_2014_summary_means_distribution()
+    fig, axs = plt.subplots(size, 1, figsize=(16, size * 6))
+    fig.tight_layout(pad=5.0)
