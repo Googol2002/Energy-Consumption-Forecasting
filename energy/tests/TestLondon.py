@@ -7,7 +7,7 @@
 import numpy as np
 import matplotlib
 import matplotlib.pyplot as plt
-# matplotlib.use('TkAgg')
+matplotlib.use('TkAgg')
 import time
 import pandas as pd
 
@@ -33,10 +33,10 @@ from energy.dataset.london_clean import London_11_14_set_test,London_11_14_set,c
 #print("time for concat:", t_end2 - t_end1)
 
 
-# dataset = London_11_14_random_select(train_l=7, test_l=7, size=3000)
-# print(len(dataset))
-# print(dataset[len(dataset)-1])
-# expectations,variances=dataset.statistics(110)
+dataset = London_11_14_random_select(train_l=7, test_l=7, size=3000)
+# # print(len(dataset))
+# # print(dataset[len(dataset)-1])
+# expectations,variances=dataset.statistics(110,7)
 # print("expectations:",expectations)
 # print("variances:",variances)
 # print(expectations.mean())
@@ -59,20 +59,24 @@ from energy.dataset.london_clean import London_11_14_set_test,London_11_14_set,c
     :param test_continuous：每组测试集连续天数，默认1
     :param times: 重复抽样次数，10次大致对应3000个元组(x, y, x_1, y_1)
     :param size: 随机抽取的用户数量，上限5068
+    :param ev_key: 期望和方差的统计长度，=1代表一天48列，=7代表一周48*7列
     测试集个数=label_l*test_days*test_continuous
 """
-set1,set2,expectations,variances=createDataSet(train_l=10, label_l=7, test_days=3,test_continuous=5,size=3000,times=1)
+set1,set2,expectations,variances=createDataSet(train_l=10, label_l=7, test_days=3,test_continuous=5,size=3000,times=1,ev_key=1)
+print("expectations_mean:",expectations.mean())
+print("variances_mean:",variances.mean())
+#print(set2[0])
+print("train_lens:",len(set1),"test_lens:",len(set2))
+print(set1[1])
+
+
 #data_set=London_11_14_set(train_l=5, label_l=1, size=3000,times=10)#time for set: 11.827157974243164
 # print(data_set[len(data_set)-1])#getitem访问
 # print(len(data_set))
 #expectations,variances=data_set.statistics()
 #print("expectations:",expectations)
 #print("variances:",variances)
-print("expectations_mean:",expectations.mean())
-print("variances_mean:",variances.mean())
-#print(set2[0])
-print("train_lens:",len(set1),"test_lens:",len(set2))
-#print(set1[1])
+
 
 # print(data_set.lst[1])#访问元组示例:(x, y, x_1, y_1)
 # print(data_set.arr.shape)#(4820, 4)
@@ -87,19 +91,38 @@ print("train_lens:",len(set1),"test_lens:",len(set2))
 # print(expectations)
 # print(variances)
 
+#直接用日或周均值来预测的效果
+# accuracy = []
+# for j in range(5):
+#     dataset = London_11_14_random_select(train_l=7, test_l=7, size=3000)
+#     accuracy_t = 0
+#     for i in range(len(dataset)):
+#         x, y, x1, y1 = dataset[i]
+#         e,_=dataset.statistics(110,7)
+#         e=e.reshape(-1,48)
+#         # print("X:", x)
+#         # print("y:", y)
+#         accuracy_t += np.mean(1 - np.abs((e - y) / y))
+#     print("[{}/{}]".format(j, 10))
+#
+#     accuracy_t /= len(dataset)
+#     accuracy_t *= 100
+#     accuracy.append(accuracy_t)
+#
+# print(f"Accuracy: {accuracy} \nMean:{np.mean(accuracy)}")
 
 # START=0
 # END=dataset.days-1
 # dataset_axis = np.arange(dataset.dataset.shape[0])
 # #dataset绘图
 # plt.plot(dataset_axis[48*START:48*END], dataset.dataset[48*START:48*END], c='blue', label='X')
-# #均值绘图
-# plt.plot(dataset_axis[48*START:48*END:48], dataset.dataset_mean[START:END], c='green', label='X_mean')
-# #非0分布绘图
-# data=np.load('dataset/london_data.npy')
-# data=data.astype(bool).astype(int)
-# data_distribute=np.sum(data,axis=1)
-# plt.plot(dataset_axis, data_distribute, c='red', label='counts')
+# # #均值绘图
+# # plt.plot(dataset_axis[48*START:48*END:48], dataset.dataset_mean[START:END], c='green', label='X_mean')
+# # #非0分布绘图
+# # data=np.load('dataset/london_data.npy')
+# # data=data.astype(bool).astype(int)
+# # data_distribute=np.sum(data,axis=1)
+# # plt.plot(dataset_axis, data_distribute, c='red', label='counts')
 # plt.legend()
 #     # plt.grid(True) # 显示网格线
 #     # plt.savefig("ARIMA.png")
