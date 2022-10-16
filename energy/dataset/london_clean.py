@@ -16,6 +16,8 @@ import torch
 
 # import tensorflow as tf
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+
+
 """
 最后的输出格式：X, y,X_1,y_1
 X:L * W, y:L' * W,X_1:L * 19, y_1:L' * 19
@@ -428,14 +430,24 @@ class London_11_14_set_test(Dataset):
     def __len__(self):
         return len(self.data_test)
     def __getitem__(self, index):
-        assert (index < self.__len__())
+        assert (index==0 or index < self.__len__())
         x, y, x_1, y_1 = self.data_test[index]
         return x, y, x_1, y_1
 
     def get_test_list(self):
         return self.test_list
 
+#尝试一个记录时间装饰器，事实上关键字参数不好传递？
+def record_time(func):
+    def wrapper(*args, **kwargs):#包装带参函数
+        start_time = time.perf_counter()
+        a=func(*args, **kwargs)#包装带参函数
+        end_time = time.perf_counter()
+        print('time=', end_time - start_time)
+        return a#有返回值的函数必须给个返回
+    return wrapper
 
+@record_time
 def createDataSet(train_l=Train_length, label_l=Test_length, test_days=10,
                   test_continuous=1,size=SIZE, times=TIMES):
     """
@@ -448,6 +460,7 @@ def createDataSet(train_l=Train_length, label_l=Test_length, test_days=10,
     """
     set2 = London_11_14_set_test(train_l=train_l, label_l=label_l, test_days=test_days,test_continuous=test_continuous, size=size, times=times)
     set1 = London_11_14_set(train_l=train_l, label_l=label_l, test_days=test_days,test_continuous=test_continuous, size=size, times=times,test_list=set2.get_test_list())
-    print("train_l=",train_l,"label_l=",label_l,"test_days=",test_days,"test_continuous=",test_continuous)
+    print("train_l=",train_l,"label_l=",label_l,"test_days=",test_days,"test_continuous=",test_continuous,'size=',size,'times=',times)
     e,v=set1.statistics()
-    return set1, set2,e,v
+    lst=[set1, set2,e,v]
+    return lst

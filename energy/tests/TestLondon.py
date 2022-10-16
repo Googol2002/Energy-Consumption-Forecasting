@@ -33,7 +33,9 @@ from energy.dataset.london_clean import London_11_14_set_test,London_11_14_set,c
 #print("time for concat:", t_end2 - t_end1)
 
 
-# dataset = London_11_14_random_select(train_l=5, test_l=1, size=3000)
+# dataset = London_11_14_random_select(train_l=7, test_l=7, size=3000)
+# print(len(dataset))
+# print(dataset[len(dataset)-1])
 # expectations,variances=dataset.statistics(110)
 # print("expectations:",expectations)
 # print("variances:",variances)
@@ -43,8 +45,7 @@ from energy.dataset.london_clean import London_11_14_set_test,London_11_14_set,c
 # print(dataset.dataset_all_var)
 # print(dataset.dataset_all_std)
 # print(dataset.days)
-# print(len(dataset))
-#print(dataset[len(dataset)-1])
+
 """
     __getitem__()传参范围range(dataset.__len__())
     越界会assert
@@ -60,22 +61,19 @@ from energy.dataset.london_clean import London_11_14_set_test,London_11_14_set,c
     :param size: 随机抽取的用户数量，上限5068
     测试集个数=label_l*test_days*test_continuous
 """
-begin=time.time()
-set1,set2,expectations,variances=createDataSet(train_l=10, label_l=7, test_days=3,test_continuous=5,size=3000,times=5)
+set1,set2,expectations,variances=createDataSet(train_l=10, label_l=7, test_days=3,test_continuous=5,size=3000,times=1)
 #data_set=London_11_14_set(train_l=5, label_l=1, size=3000,times=10)#time for set: 11.827157974243164
-end=time.time()
-
 # print(data_set[len(data_set)-1])#getitem访问
 # print(len(data_set))
 #expectations,variances=data_set.statistics()
-print("expectations:",expectations)
-print("variances:",variances)
-print(expectations.mean())
-print(variances.mean())
-print(set2[0])
-print(len(set1),len(set2))
-print(set1[1])
-print("10 times random:",end-begin)
+#print("expectations:",expectations)
+#print("variances:",variances)
+print("expectations_mean:",expectations.mean())
+print("variances_mean:",variances.mean())
+#print(set2[0])
+print("train_lens:",len(set1),"test_lens:",len(set2))
+#print(set1[1])
+
 # print(data_set.lst[1])#访问元组示例:(x, y, x_1, y_1)
 # print(data_set.arr.shape)#(4820, 4)
 # print(data_set.arr[1])#<class 'numpy.ndarray'>[x, y, x_1, y_1]
