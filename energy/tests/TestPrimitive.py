@@ -25,4 +25,4 @@ for j in range(100):
     accuracy_t *= 100
     accuracy.append(accuracy_t)
 
-print(f"Accuracy: {accuracy} Mean:{np.mean(accuracy)}")
+print(f"Accuracy: {accuracy} \n Mean:{np.mean(accuracy)}")
