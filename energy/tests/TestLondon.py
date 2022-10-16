@@ -70,7 +70,7 @@ print("expectations_mean:", expectations.mean())
 print("variances_mean:", variances.mean())
 # print(set2[0])
 print("train_lens:", len(set1), "test_lens:", len(set2))
-print(set1[1])
+#print(set1[1])
 
 # data_set=London_11_14_set(train_l=5, label_l=1, size=3000,times=10)#time for set: 11.827157974243164
 # print(data_set[len(data_set)-1])#getitem访问
@@ -92,25 +92,24 @@ print(set1[1])
 # print(expectations)
 # print(variances)
 
-# 直接用日或周均值来预测的效果
-# accuracy = []
-# for j in range(5):
-#     dataset = London_11_14_random_select(train_l=7, test_l=7, size=3000)
-#     accuracy_t = 0
-#     for i in range(len(dataset)):
-#         x, y, x1, y1 = dataset[i]
-#         e,_=dataset.statistics(110,7)
-#         e=e.reshape(-1,48)
-#         # print("X:", x)
-#         # print("y:", y)
-#         accuracy_t += np.mean(1 - np.abs((e - y) / y))
-#     print("[{}/{}]".format(j, 10))
-#
-#     accuracy_t /= len(dataset)
-#     accuracy_t *= 100
-#     accuracy.append(accuracy_t)
-#
-# print(f"Accuracy: {accuracy} \nMean:{np.mean(accuracy)}")
+##直接用日或周均值来预测的效果
+ev_key=7
+accuracy = []
+for j in range(5):
+    dataset = London_11_14_random_select(train_l=7, test_l=7, size=3000)
+    accuracy_t = 0
+    for i in range(len(dataset)):
+        x, y, x1, y1 = dataset[i]
+        e,_=dataset.statistics(ev_key)#=1代表一天，=7代表一周
+        e=e.reshape(-1,48)
+        accuracy_t += np.mean(1 - np.abs((e - y) / y))
+    print("[{}/{}]".format(j+1, 10))
+
+    accuracy_t /= len(dataset)
+    accuracy_t *= 100
+    accuracy.append(accuracy_t)
+
+print(f"Accuracy: {accuracy} \nMean:{np.mean(accuracy)} using {ev_key} days of expectations")
 
 # START=0
 # END=dataset.days-1
