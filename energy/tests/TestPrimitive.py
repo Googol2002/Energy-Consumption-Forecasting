@@ -18,7 +18,7 @@ for j in range(10):
         x, y, x1, y1 = dataset[i]
         # print("X:", x)
         # print("y:", y)
-        accuracy_t += np.mean(1 - np.abs((x - y) / y))
+        accuracy_t += np.mean(np.abs(1 - np.abs((x - y) / y)))
     print("[{}/{}]".format(j, 10))
 
     accuracy_t /= len(dataset)
