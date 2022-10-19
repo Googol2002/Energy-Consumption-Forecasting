@@ -1,4 +1,4 @@
-from multiprocessing.util import is_abstract_socket_namespace
+# from multiprocessing.util import is_abstract_socket_namespace
 import numpy as np
 import matplotlib
 import matplotlib.pyplot as plt
@@ -12,7 +12,7 @@ from energy.dataset.london_clean import London_11_14_random_select
 
 accuracy = []
 for j in range(10):
-    dataset = London_11_14_random_select(train_l=7, test_l=7, size=3000)
+    dataset = London_11_14_random_select(train_l=7, test_l=7, size=3500)
     accuracy_t = 0
     for i in range(len(dataset)):
         x, y, x1, y1 = dataset[i]
@@ -34,7 +34,7 @@ from helper import mute_log_plot
 
 
 with mute_log_plot():
-    primitive_plot_forecasting_random_samples_weekly("PrimitivelyForcastingNextWeek", London_11_14_random_select(train_l=7, test_l=7, size=3000), filename="Primitive")
+    primitive_plot_forecasting_random_samples_weekly("PrimitivelyForecastingNextWeek", London_11_14_random_select(train_l=7, test_l=7, size=3000), filename="Primitive")
 
 
 
