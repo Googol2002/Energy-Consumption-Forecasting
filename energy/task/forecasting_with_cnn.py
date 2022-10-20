@@ -15,7 +15,7 @@ from model.PeriodicalModel import WeeklyModel, customize_loss
 from helper.log import log_printf, performance_log, load_task_model, record_training_process
 from helper import mute_log_plot
 
-device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+from helper.device_manager import device
 
 GRADIENT_NORM = 100
 WEIGHT_DECAY = 0.01

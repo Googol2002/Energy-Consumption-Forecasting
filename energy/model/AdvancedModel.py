@@ -2,7 +2,7 @@ import torch
 from torch import nn
 from torch.nn import TransformerEncoderLayer, TransformerEncoder
 
-device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+from helper.device_manager import device
 
 # 十分重要.
 MEANS_SCALE_FACTOR = 100000
