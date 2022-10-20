@@ -9,7 +9,7 @@ from torch.utils.data import DataLoader
 from dataset import London_11_14_random_select, construct_dataloader
 from dataset.london_clean import London_11_14_set, createDataSet
 from helper.plot import plot_forecasting_random_samples_weekly, plot_training_process, plot_sensitivity_curve_weekly
-from model.AdvancedModel import CNNModel
+from model.AdvancedModel import TransformerModel
 from model.PeriodicalModel import WeeklyModel, customize_loss
 
 from helper.log import log_printf, performance_log, load_task_model, record_training_process
@@ -33,7 +33,7 @@ MEANS_SCALE_FACTOR = 100
 VARIANCES_SCALE_FACTOR = 10000
 VARIANCES_DECAY = 2 * 1e-5
 
-TASK_ID = "ForecastingWithCNN"
+TASK_ID = "ForecastingWithTransformer"
 
 bias_fn = nn.L1Loss()
 
@@ -148,12 +148,12 @@ def train_model():
     # val = DataLoader(val_and_test_set, batch_size=BATCH_SIZE)
     print(len(train_set), len(val_and_test_set))
 
-    predictor = CNNModel(input_size=PERIOD, hidden_size=HIDDEN_SIZE, num_layers=1,
-                         output_size=PERIOD, batch_size=BATCH_SIZE, period=PERIOD,
-                         time_size=TIME_SIZE, means=energy_expectations,
-                         means_scale_factor=MEANS_SCALE_FACTOR,
-                         variances_scale_factor=VARIANCES_SCALE_FACTOR,
-                         mlp_sizes=[HIDDEN_SIZE * 2 + TIME_SIZE, HIDDEN_SIZE, HIDDEN_SIZE, 256, 128, 128, 64, PERIOD])
+    predictor = TransformerModel(input_size=PERIOD, hidden_size=HIDDEN_SIZE, num_layers=1,
+                                 output_size=PERIOD, batch_size=BATCH_SIZE, period=PERIOD,
+                                 time_size=TIME_SIZE, n_head=3, n_layers=2, means=energy_expectations,
+                                 means_scale_factor=MEANS_SCALE_FACTOR,
+                                 variances_scale_factor=VARIANCES_SCALE_FACTOR,
+                                 mlp_sizes=[HIDDEN_SIZE * 2 + TIME_SIZE, HIDDEN_SIZE, HIDDEN_SIZE, 256, 128, 128, 64, PERIOD])
 
     print(TASK_ID + ' model:', predictor)
     adam = torch.optim.Adam(predictor.parameters(), lr=LEARNING_RATE, weight_decay=WEIGHT_DECAY)

@@ -11,9 +11,9 @@ import random
 from helper import is_muted, LOG_DIRECTORY, training_recoder
 from helper.log import date_tag
 
-FIGURE_DIRECTORY = r"figure"
+from helper.device_manager import device
 
-device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+FIGURE_DIRECTORY = r"figure"
 
 # plt.rcParams["font.sans-serif"] = ["SimHei"]  # 设置字体
 # plt.rcParams["axes.unicode_minus"] = False  # 该语句解决图像中的“-”负号的乱码问题

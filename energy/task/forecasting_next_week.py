@@ -14,7 +14,7 @@ from model.PeriodicalModel import WeeklyModel, customize_loss
 from helper.log import log_printf, performance_log, load_task_model, record_training_process
 from helper import mute_log_plot
 
-device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+from helper.device_manager import device
 
 GRADIENT_NORM = 100
 WEIGHT_DECAY = 0.01
@@ -140,7 +140,7 @@ def train_model():
 
     # 新的数据集切分方式
     train_set, val_and_test_set, energy_expectations, energy_variances = createDataSet(
-        train_l=X_LENGTH, label_l=Y_LENGTH, test_days=10, test_continuous=3, size=3500, times=10)
+        train_l=X_LENGTH, label_l=Y_LENGTH, test_days=10, test_continuous=3, size=4000, times=10)
     val, test = construct_dataloader(val_and_test_set, train_ratio=0.5,
                                      validation_ratio=0.5, test_ratio=0,
                                      batch_size=BATCH_SIZE)
