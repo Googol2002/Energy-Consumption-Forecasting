@@ -37,7 +37,7 @@ def _output_directory_path(task_id):
 
 def _append_performance_recode(task_id, train_accuracy, validation_accuracy, test_accuracy, model_name):
     path = os.path.join(LOG_DIRECTORY, task_id, "performance.csv")
-    performance = pd.DataFrame({"date": [date_tag], "train": [train_accuracy],
+    performance = pd.DataFrame({"datetime": [date_tag], "train": [train_accuracy],
                                 "validation": [validation_accuracy], "test": [test_accuracy],
                                 "model_name": [model_name]}).astype(
         {"datetime": "str", "train": float, "validation": float, "test": float, "model_name": str})
