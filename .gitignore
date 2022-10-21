@@ -1,6 +1,7 @@
 dataset/*.csv
 dataset/*.npy
 log/*/*.pth
-log/*/*.txt
+log/*/output/*.txt
 log/*/figure/*.png
 log/*/model/*.pth
+log/*/performance.csv

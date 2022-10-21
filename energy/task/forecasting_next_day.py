@@ -150,7 +150,7 @@ def train_model():
     performance_log(TASK_ID, "========Best Performance========\n", model=predictor)
     val_loop(val, best_model, loss_function)
     val_loop(test, best_model, loss_function, tag="Test")
-    plot_forecasting_random_samples_daily(best_model, test.dataset, LATITUDE_FACTOR, filename="Performance")
+    plot_forecasting_random_samples_daily(TASK_ID, best_model, test.dataset, LATITUDE_FACTOR, filename="Performance")
 
     # 仅供测试
     # best_model.load_state_dict(load_task_model(TASK_ID))

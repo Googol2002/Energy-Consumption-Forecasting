@@ -24,7 +24,7 @@ PERIOD = 48
 TIME_SIZE = 7 + 12
 X_LENGTH = 30
 Y_LENGTH = 7
-EPOCH_STEP = 200
+EPOCH_STEP = 2
 TOLERANCE = 40
 LATITUDE_FACTOR = 1
 LEARNING_RATE = 5e-3
@@ -178,10 +178,12 @@ def train_model():
         record_training_process(TASK_ID, train_loss, validation_loss, gradient_norm=norm)
 
     best_model.lstm.flatten_parameters()
-    performance_log(TASK_ID, "========Best Performance========\n", model=predictor)
-    val_loop(train, best_model, loss_function, tag="Train")
-    val_loop(val, best_model, loss_function, tag="Val")
-    val_loop(test, best_model, loss_function, tag="Test")
+    log_printf(TASK_ID, "========Best Performance========\n")
+    _, train_accuracy = val_loop(train, best_model, loss_function, tag="Train")
+    _, validation_accuracy = val_loop(val, best_model, loss_function, tag="Val")
+    _, test_accuracy = val_loop(test, best_model, loss_function, tag="Test")
+    performance_log(TASK_ID, model=predictor, train_accuracy=train_accuracy,
+                    validation_accuracy=validation_accuracy, test_accuracy=test_accuracy)
     # 画图测试
     # display_dataset = DataLoader(val.dataset, batch_size=1, shuffle=True)
     # regression_display(best_model, next(iter(display_dataset)))

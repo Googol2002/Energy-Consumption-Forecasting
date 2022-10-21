@@ -43,7 +43,12 @@ def plot_ld2011_2014_summary_means_distribution():
 
 
 def _figure_directory_path(task_id):
-    return os.path.join(LOG_DIRECTORY, task_id, "figure")
+    path = os.path.join(LOG_DIRECTORY, task_id, "figure")
+    # 判断是否存在文件夹如果不存在则创建为文件夹
+    if not os.path.exists(path):
+        os.makedirs(path)
+
+    return path
 
 
 def _save_fig(task_id, filename=None):
@@ -54,7 +59,7 @@ def _save_fig(task_id, filename=None):
         plt.savefig(os.path.join(path, "{}-Date({}).png".format(filename, date_tag)), dpi=300)
 
 
-def plot_forecasting_random_samples_daily(model, dataset, factor, row=2, col=3, filename=None):
+def plot_forecasting_random_samples_daily(task_id, model, dataset, factor, row=2, col=3, filename=None):
     fig, axs = plt.subplots(row, col, figsize=(col * 6, row * 6))
     fig.tight_layout(pad=5.0)
     indexes = random.sample(range(len(dataset)), row * col)
@@ -79,9 +84,7 @@ def plot_forecasting_random_samples_daily(model, dataset, factor, row=2, col=3, 
             axs[i][j].set_ylabel("Energy Consumption")
 
     if not is_muted and filename is not None:
-        folder = os.path.exists(os.path.join(FIGURE_DIRECTORY))
-        if not folder:  # 判断是否存在文件夹如果不存在则创建为文件夹
-            os.makedirs(os.path.join(FIGURE_DIRECTORY))
+        folder = _figure_directory_path(task_id)
         plt.savefig(os.path.join(FIGURE_DIRECTORY, "{}-Date({}).png".format(filename, date_tag)), dpi=300)
 
     plt.show()
@@ -200,5 +203,5 @@ def primitive_plot_forecasting_random_samples_weekly(task_id, dataset, size=4, f
 
 if __name__ == "__main__":
     plot_ld2011_2014_summary_means_distribution()
-    fig, axs = plt.subplots(size, 1, figsize=(16, size * 6))
-    fig.tight_layout(pad=5.0)
+    # fig, axs = plt.subplots(size, 1, figsize=(16, size * 6))
+    # fig.tight_layout(pad=5.0)
