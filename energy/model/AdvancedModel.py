@@ -8,11 +8,6 @@ from helper.device_manager import device
 MEANS_SCALE_FACTOR = 100000
 VARIANCES_SCALE_FACTOR = 100000000
 
-# def normal_loss(outputs, labels):
-#     _means, _variances = outputs[:, :, 0], outputs[:, :, 1]
-#
-#     return torch.sum((labels - _means) ** 2 / _variances +
-#                      VARIANCES_FACTOR * _variances)
 
 STABILIZING_FACTOR = 1e-5
 def customize_loss(variances_decay):
@@ -52,7 +47,8 @@ CELL_INIT_STD_VARIANCE = 1 / 4
 
 class CNNModel(nn.Module):
     def __init__(self, input_size, hidden_size, num_layers, output_size,
-                 batch_size, period, time_size, means=None, mlp_sizes=None,
+                 batch_size, period, time_size, kernel_size,
+                 means=None, mlp_sizes=None,
                  means_scale_factor=MEANS_SCALE_FACTOR,
                  variances_scale_factor=VARIANCES_SCALE_FACTOR):
         super().__init__()
@@ -68,17 +64,16 @@ class CNNModel(nn.Module):
         self.variances_scale_factor = variances_scale_factor
 
         self.cnn = nn.Sequential(
-            nn.Conv2d(1, 2, kernel_size=3, padding="same", padding_mode="reflect"),
-            nn.AvgPool2d(3, 1, padding=(1, 1)),
-            nn.Conv2d(2, 4, kernel_size=3, padding="same", padding_mode="reflect"),
-            nn.AvgPool2d(3, 1, padding=(1, 1))
+            nn.Conv1d(1, 2, kernel_size=kernel_size, padding="same", padding_mode="reflect"),
+            nn.Conv1d(2, 4, kernel_size=kernel_size, padding="same", padding_mode="reflect"),
+            nn.MaxPool1d(kernel_size, stride=4, padding=kernel_size // 2)
         ).to(device)
 
         # 138需要后续计算
-        self.lstm = nn.LSTM(self.input_size * 4 + self.time_size, self.hidden_size, self.num_layers,
+        self.lstm = nn.LSTM(self.input_size * 1 + self.time_size, self.hidden_size, self.num_layers,
                             batch_first=True, bidirectional=True).to(device)
         mlp_sizes = mlp_sizes if mlp_sizes else \
-            [self.hidden_size * 2 + self.time_size, self.hidden_size, 256, 128, 128, 64, self.period]
+            [self.hidden_size * 2 + self.time_size, self.hidden_size, 256, 128, 64, self.period]
         # 预测均值
         self.mlp_means = init_mlp_weights(mlp_sizes, means, self.means_scale_factor)
         # 预测方差
@@ -93,7 +88,9 @@ class CNNModel(nn.Module):
         c_0 = torch.randn(self.num_directions * self.num_layers, batch_size,
                           self.hidden_size).to(device) * CELL_INIT_STD_VARIANCE + 1
 
-        features = self.cnn(energy_xs.unsqueeze(1) / self.means_scale_factor).permute(0, 2, 3, 1).flatten(2, -1)
+        shape = energy_xs.shape
+        features = self.cnn(energy_xs.reshape(shape[0], 1, -1) / self.means_scale_factor)
+        features = features.reshape(shape[0], shape[1], -1)
 
         output, (h_n, c_n) = self.lstm(torch.concat((features, time_xs), dim=-1), (h_0, c_0))
 

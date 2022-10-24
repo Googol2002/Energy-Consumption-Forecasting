@@ -2,7 +2,7 @@ import argparse
 
 import torch
 
-def _find_empty_device():
+def _fetch_empty_device():
     global device
     for i in range(torch.cuda.device_count()):
         if torch.cuda.memory_allocated(device=0) < 1024*1024*256:
@@ -21,7 +21,7 @@ device = "cuda:0"
 if args.gpu is not None:
     device = torch.device(args.gpu[0] if torch.cuda.is_available() else "cpu")
 else:
-    _find_empty_device()
+    _fetch_empty_device()
 
 
 

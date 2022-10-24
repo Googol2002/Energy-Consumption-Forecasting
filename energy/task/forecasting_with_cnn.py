@@ -20,7 +20,8 @@ from helper.device_manager import device
 GRADIENT_NORM = 100
 WEIGHT_DECAY = 0.01
 BATCH_SIZE = 128
-HIDDEN_SIZE = 512
+HIDDEN_SIZE = 256
+KERNEL_SIZE = 7
 PERIOD = 48
 TIME_SIZE = 7 + 12
 X_LENGTH = 30
@@ -28,10 +29,11 @@ Y_LENGTH = 7
 EPOCH_STEP = 200
 TOLERANCE = 40
 LATITUDE_FACTOR = 1
-LEARNING_RATE = 5e-3
+LEARNING_RATE = 2e-3
 MEANS_SCALE_FACTOR = 100
 VARIANCES_SCALE_FACTOR = 10000
 VARIANCES_DECAY = 2 * 1e-5
+NOISE_STD_VARIANCE = 4
 
 TASK_ID = "ForecastingWithCNN"
 
@@ -107,7 +109,7 @@ def train_loop(dataloader, model, loss_fn, optimizer):
         energy_x, time_x = energy_x.to(device, dtype=torch.float32), time_x.to(device, dtype=torch.float32)
         energy_y, time_y = energy_y.to(device, dtype=torch.float32), time_y.to(device, dtype=torch.float32)
         # Gaussian Noise 对抗过拟合
-        energy_x += (torch.randn(energy_x.shape, device=device) * 2)
+        energy_x += (torch.randn(energy_x.shape, device=device) * NOISE_STD_VARIANCE)
 
         # Compute prediction and loss
         pred = model(energy_x, time_x, time_y)
@@ -150,12 +152,12 @@ def train_model():
 
     predictor = CNNModel(input_size=PERIOD, hidden_size=HIDDEN_SIZE, num_layers=1,
                          output_size=PERIOD, batch_size=BATCH_SIZE, period=PERIOD,
-                         time_size=TIME_SIZE, means=energy_expectations,
+                         time_size=TIME_SIZE, means=energy_expectations, kernel_size=KERNEL_SIZE,
                          means_scale_factor=MEANS_SCALE_FACTOR,
                          variances_scale_factor=VARIANCES_SCALE_FACTOR,
-                         mlp_sizes=[HIDDEN_SIZE * 2 + TIME_SIZE, HIDDEN_SIZE, HIDDEN_SIZE, 256, 128, 128, 64, PERIOD])
+                         mlp_sizes=[HIDDEN_SIZE * 2 + TIME_SIZE, HIDDEN_SIZE, 128, 128, 64, PERIOD])
 
-    print(TASK_ID + ' model:', predictor)
+    log_printf(TASK_ID, TASK_ID + ' model:' + "\n" + str(predictor))
     adam = torch.optim.Adam(predictor.parameters(), lr=LEARNING_RATE, weight_decay=WEIGHT_DECAY)
 
     best_model = None
@@ -178,10 +180,12 @@ def train_model():
         record_training_process(TASK_ID, train_loss, validation_loss, gradient_norm=norm)
 
     best_model.lstm.flatten_parameters()
-    performance_log(TASK_ID, "========Best Performance========\n", model=predictor)
-    val_loop(train, best_model, loss_function, tag="Train")
-    val_loop(val, best_model, loss_function, tag="Val")
-    val_loop(test, best_model, loss_function, tag="Test")
+    log_printf(TASK_ID, "========Best Performance========\n")
+    _, train_accuracy = val_loop(train, best_model, loss_function, tag="Train")
+    _, validation_accuracy = val_loop(val, best_model, loss_function, tag="Val")
+    _, test_accuracy = val_loop(test, best_model, loss_function, tag="Test")
+    performance_log(TASK_ID, model=predictor, train_accuracy=train_accuracy,
+                    validation_accuracy=validation_accuracy, test_accuracy=test_accuracy)
     # 画图测试
     # display_dataset = DataLoader(val.dataset, batch_size=1, shuffle=True)
     # regression_display(best_model, next(iter(display_dataset)))
