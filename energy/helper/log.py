@@ -94,7 +94,7 @@ def load_task_model(task_id, name=None):
                        for name in model_names]
         name = max(zip(model_dates, model_names), key=lambda t: t[0])[1]
 
-    path = os.path.join(LOG_DIRECTORY, task_id, name)
+    path = os.path.join(_model_directory_path(task_id), name)
     model_data = torch.load(path)
     print("Model loaded from {} :".format(path))
     # for param_tensor in state_dict:

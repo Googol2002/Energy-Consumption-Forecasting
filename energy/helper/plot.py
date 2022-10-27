@@ -1,6 +1,7 @@
 import os
 
 import torch
+from matplotlib import ticker
 from torch.utils.data import DataLoader
 
 from dataset import LD2011_2014_summary_by_day
@@ -15,8 +16,8 @@ from helper.device_manager import device
 
 FIGURE_DIRECTORY = r"figure"
 
-# plt.rcParams["font.sans-serif"] = ["SimHei"]  # 设置字体
-# plt.rcParams["axes.unicode_minus"] = False  # 该语句解决图像中的“-”负号的乱码问题
+plt.rcParams["font.sans-serif"] = ["Microsoft YaHei"]  # 设置字体
+plt.rcParams["axes.unicode_minus"] = False  # 该语句解决图像中的“-”负号的乱码问题
 
 
 def plot_ld2011_2014_summary_means_distribution():
@@ -117,6 +118,59 @@ def plot_forecasting_random_samples_weekly(task_id, model, dataset, factor, size
     plt.show()
 
 
+def plot_forecasting_weekly_for_comparison(task_id, model, dataset, factor, index):
+    def _plot(last_week: bool, mean_curve: bool, confidence_curve: bool, transform,
+              yticks=None, percentage=True, filename=None):
+        plt.figure(figsize=(12, 8))
+        if percentage:
+            plt.gca().yaxis.set_major_formatter(ticker.FuncFormatter(
+                lambda temp, position: '%1.0f' % temp + '%'))
+
+        plt.plot(range(y.shape[0]), transform(y), label="实际负载")
+        if mean_curve:
+            plt.plot(range(y.shape[0]), transform(m), color="red", label="CNN + LSTM 残差")
+            if not confidence_curve:
+                plt.fill_between(range(y.shape[0]), transform(y),
+                                 transform(m), facecolor='red', alpha=0.3)
+        if confidence_curve:
+            plt.fill_between(range(y.shape[0]), transform(m - factor * np.sqrt(v)),
+                             transform(m + factor * np.sqrt(v)), facecolor='red', alpha=0.3, label="高置信度区间")
+        if last_week:
+            plt.plot(range(y.shape[0]), transform(y_last_week), color="deepskyblue", label="前周填充（基准） 残差")
+            if not confidence_curve:
+                plt.fill_between(range(y.shape[0]), transform(y),
+                                 transform(y_last_week), facecolor='deepskyblue', alpha=0.3)
+        plt.title("样本 [{}]".format(index + 1))
+        plt.xlabel("时间")
+        if yticks is not None:
+            plt.yticks(yticks)
+        plt.ylabel("电力负载")
+        plt.title("残差图对比")
+        plt.legend()
+
+        if filename:
+            _save_fig(task_id, filename)
+        plt.show()
+
+    energy_x, energy_y, time_x, time_y = [torch.Tensor(v).unsqueeze(0) for v in dataset[index]]
+
+    with torch.no_grad():
+        pred = model(energy_x.to(device, dtype=torch.float32),
+                     time_x.to(device, dtype=torch.float32),
+                     time_y.to(device, dtype=torch.float32)).cpu().numpy()
+
+    means_cup, variances_cup = pred[:, :, 0].reshape(-1), pred[:, :, 1].reshape(-1)
+    energy_y = energy_y.reshape(-1).cpu().numpy()
+    y_last_week, y, m, v = dataset[index][0][-7:].reshape(-1), energy_y, means_cup, variances_cup
+    yticks = np.arange(min(y_last_week - y - 2) // 5 * 5, max(y_last_week - y + 2) // 5 * 5 + 1, 30)
+    _plot(True, True, True, lambda v: v, percentage=False, filename="Fig1")
+
+    _plot(True, False, False, lambda v: 100 * (v - y) / y, filename="Fig2")
+    _plot(False, True, False, lambda v: 100 * (v - y) / y, filename="Fig3")
+    _plot(True, True, False, lambda v: 100 * (v - y) / y, filename="Fig4")
+    _plot(True, True, True, lambda v: 100 * (v - y) / y, filename="Fig5")
+
+
 def plot_sensitivity_curve_weekly(task_id, model, dataset, tolerance_range=None, filename=None):
     tolerance_range = tolerance_range if tolerance_range else (0, 2)
     dataloader = DataLoader(dataset, batch_size=64, shuffle=True)
@@ -143,11 +197,11 @@ def plot_sensitivity_curve_weekly(task_id, model, dataset, tolerance_range=None,
 
     plt.plot(roc[0], roc[1])
     plt.grid()
-    plt.xlabel("Within the Power Generation(%)")
-    plt.ylabel("Utilization Rate(%)")
+    plt.xlabel("发电量覆盖用电量情况统计(%)")
+    plt.ylabel("能源利用率(%)")
     plt.xticks(np.arange((min(roc[0]) // 5) * 5, 101, 5))
     plt.yticks(np.arange((min(roc[1]) // 5) * 5, 101, 5))
-    plt.title("Sensitivity Curve")
+    plt.title("敏感度曲线(Sensitivity Curve)")
     _save_fig(task_id, filename=filename)
     plt.show()
 

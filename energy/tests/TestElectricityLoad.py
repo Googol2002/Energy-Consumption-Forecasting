@@ -4,7 +4,7 @@ import pytest
 import numpy as np
 import matplotlib.pyplot as plt
 
-from energy.dataset import LD2011_2014, LD2011_2014_summary, construct_dataloader, LD2011_2014_summary_by_day
+from energy.dataset.electricity_load import LD2011_2014, LD2011_2014_summary, construct_dataloader, LD2011_2014_summary_by_day
 
 plt.rcParams["font.sans-serif"] = ["SimHei"]    # 设置字体
 plt.rcParams["axes.unicode_minus"] = False  # 该语句解决图像中的“-”负号的乱码问题

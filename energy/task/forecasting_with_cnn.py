@@ -8,7 +8,8 @@ from torch.utils.data import DataLoader
 
 from dataset import London_11_14_random_select, construct_dataloader
 from dataset.london_clean import London_11_14_set, createDataSet
-from helper.plot import plot_forecasting_random_samples_weekly, plot_training_process, plot_sensitivity_curve_weekly
+from helper.plot import plot_forecasting_random_samples_weekly, plot_training_process, plot_sensitivity_curve_weekly, \
+    plot_forecasting_weekly_for_comparison
 from model.AdvancedModel import CNNModel
 from model.PeriodicalModel import WeeklyModel, customize_loss
 
@@ -194,19 +195,17 @@ def train_model():
     plot_sensitivity_curve_weekly(TASK_ID, best_model, val.dataset, filename="SensitivityCurve")
 
 
-def test_model():
-    predictor = WeeklyModel(input_size=PERIOD, hidden_size=HIDDEN_SIZE, num_layers=1,
-                            output_size=PERIOD, batch_size=BATCH_SIZE, period=PERIOD,
-                            time_size=TIME_SIZE)
-    predictor.load_state_dict(load_task_model(TASK_ID))
+def test_model_on_whole_data():
+    predictor = load_task_model(TASK_ID, name="Date(2022-10-24 20-15-10).pth")
     predictor.eval()
 
-    dataset = London_11_14_random_select(train_l=X_LENGTH, test_l=Y_LENGTH, size=3000)
-    train, val, test = construct_dataloader(dataset, batch_size=BATCH_SIZE)
-    with mute_log_plot():
-        val_loop(val, predictor, loss_function, tag="Val")
-        val_loop(test, predictor, loss_function, tag="Test")
-        plot_forecasting_random_samples_weekly(predictor, test.dataset, LATITUDE_FACTOR, filename="Performance")
+    whole_dataset = London_11_14_random_select(train_l=X_LENGTH, test_l=Y_LENGTH, size=3500)
+    dataloader = DataLoader(whole_dataset, shuffle=True)
+
+    val_loop(dataloader, predictor, loss_function, tag="Whole Dataset")
+    plot_forecasting_weekly_for_comparison(TASK_ID, predictor, whole_dataset, LATITUDE_FACTOR, 230)
+    plot_sensitivity_curve_weekly(TASK_ID, predictor, whole_dataset, filename="SensitivityCurve")
+
 
 
 RANDOM_SEED = 10001
@@ -214,4 +213,5 @@ torch.cuda.manual_seed(RANDOM_SEED)
 if __name__ == "__main__":
     # test_model()
     # with mute_log_plot():
-    train_model()
+    # train_model()
+    test_model_on_whole_data()
