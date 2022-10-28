@@ -9,7 +9,7 @@ from torch.utils.data import DataLoader
 from dataset import London_11_14_random_select, construct_dataloader
 from dataset.london_clean import London_11_14_set, createDataSet
 from helper.plot import plot_forecasting_random_samples_weekly, plot_training_process, plot_sensitivity_curve_weekly, \
-    plot_forecasting_weekly_for_comparison
+    plot_forecasting_weekly_for_comparison, plot_forecasting_samples_daily
 from model.AdvancedModel import CNNModel
 from model.PeriodicalModel import WeeklyModel, customize_loss
 
@@ -204,7 +204,8 @@ def test_model_on_whole_data():
 
     val_loop(dataloader, predictor, loss_function, tag="Whole Dataset")
     plot_forecasting_weekly_for_comparison(TASK_ID, predictor, whole_dataset, LATITUDE_FACTOR, 230)
-    plot_sensitivity_curve_weekly(TASK_ID, predictor, whole_dataset, filename="SensitivityCurve")
+    # plot_forecasting_samples_daily(TASK_ID, predictor, whole_dataset, LATITUDE_FACTOR, 230, filename="NextDay")
+    # plot_sensitivity_curve_weekly(TASK_ID, predictor, whole_dataset, filename="SensitivityCurve")
 
 
 

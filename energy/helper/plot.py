@@ -140,12 +140,15 @@ def plot_forecasting_weekly_for_comparison(task_id, model, dataset, factor, inde
             if not confidence_curve:
                 plt.fill_between(range(y.shape[0]), transform(y),
                                  transform(y_last_week), facecolor='deepskyblue', alpha=0.3)
-        plt.title("样本 [{}]".format(index + 1))
+        # plt.title("样本 [{}]".format(index + 1))
         plt.xlabel("时间")
         if yticks is not None:
             plt.yticks(yticks)
         plt.ylabel("电力负载")
-        plt.title("残差图对比")
+        if percentage:
+            plt.title("残差图对比")
+        else:
+            plt.title("单周预测")
         plt.legend()
 
         if filename:
@@ -170,6 +173,33 @@ def plot_forecasting_weekly_for_comparison(task_id, model, dataset, factor, inde
     _plot(True, True, False, lambda v: 100 * (v - y) / y, filename="Fig4")
     _plot(True, True, True, lambda v: 100 * (v - y) / y, filename="Fig5")
 
+
+def plot_forecasting_samples_daily(task_id, model, dataset, factor, index, filename=None):
+    plt.figure(figsize=(12, 8))
+
+    energy_x, energy_y, time_x, time_y = [torch.Tensor(v).unsqueeze(0) for v in dataset[index]]
+    with torch.no_grad():
+        pred = model(energy_x.to(device, dtype=torch.float32),
+                     time_x.to(device, dtype=torch.float32),
+                     time_y.to(device, dtype=torch.float32)).cpu().numpy()
+
+    means_cup, variances_cup = pred[:, :, 0].reshape(-1), pred[:, :, 1].reshape(-1)
+    energy_y = energy_y.reshape(-1).cpu().numpy()
+    y, m, v = energy_y[:48], means_cup[:48], variances_cup[:48]
+
+    transform = lambda v: v
+    plt.plot(range(y.shape[0]), transform(y), label="实际负载")
+    plt.plot(range(y.shape[0]), transform(m), color="red", label="CNN + LSTM 残差")
+    plt.fill_between(range(y.shape[0]), transform(m - factor * np.sqrt(v)),
+                     transform(m + factor * np.sqrt(v)), facecolor='red', alpha=0.3, label="高置信度区间")
+    plt.title("单日预测".format(index + 1))
+    plt.xlabel("时间")
+    plt.ylabel("电力负载")
+    plt.legend()
+
+    if filename:
+        _save_fig(task_id, filename)
+    plt.show()
 
 def plot_sensitivity_curve_weekly(task_id, model, dataset, tolerance_range=None, filename=None):
     tolerance_range = tolerance_range if tolerance_range else (0, 2)
