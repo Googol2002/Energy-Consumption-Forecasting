@@ -101,6 +101,36 @@ class CNNModel(nn.Module):
                                          * self.variances_scale_factor),
                             dim=1) for day in range(predictive_seq_len)], dim=1)
 
+# 增加了 固定长度的 Attention 功能
+class CNN_Attention_Model(CNNModel):
+    def __init__(self, *args, attention_size=30, **kwargs):
+        super(CNN_Attention_Model, self).__init__(*args, **kwargs)
+        self.attention = nn.Parameter(torch.Tensor((2, attention_size))).to(device)
+
+    def forward(self, energy_xs, time_xs, time_ys):
+        batch_size, seq_len = energy_xs.shape[0], energy_xs.shape[1]  # B, L
+        predictive_seq_len = time_ys.shape[1]  # L'
+        h_0 = torch.randn(self.num_directions * self.num_layers, batch_size,
+                          self.hidden_size).to(device)
+        # NOTICE：对于c_0，将其均值初始化在1处是十分必要的！
+        c_0 = torch.randn(self.num_directions * self.num_layers, batch_size,
+                          self.hidden_size).to(device) * CELL_INIT_STD_VARIANCE + 1
+
+        shape = energy_xs.shape
+        features = self.cnn(energy_xs.reshape(shape[0], 1, -1) / self.means_scale_factor)
+        features = features.reshape(shape[0], shape[1], -1)
+
+        output, (h_n, c_n) = self.lstm(torch.concat((features, time_xs), dim=-1), (h_0, c_0))
+
+        # B x L' x 2
+        return torch.stack([torch.stack((self.mlp_means(torch.cat([h_n[0], h_n[1], time_ys[:, day]], 1))
+                                         * self.means_scale_factor,
+                                         self.mlp_variances(torch.cat([h_n[0], h_n[1], time_ys[:, day]], 1))
+                                         * self.variances_scale_factor),
+                                        dim=1) for day in range(predictive_seq_len)], dim=1)
+
+
+
 class TransformerModel(nn.Module):
     def __init__(self, input_size, hidden_size, num_layers, output_size,
                  batch_size, period, time_size, n_head, n_layers, means=None, mlp_sizes=None,
