@@ -178,7 +178,7 @@ def train_model():
         record_training_process(TASK_ID, train_loss, validation_loss, gradient_norm=norm)
 
     best_model.lstm.flatten_parameters()
-    performance_log(TASK_ID, "========Best Performance========\n", model=predictor)
+    performance_log(TASK_ID, "========Best Performance========\n", model=best_model)
     val_loop(train, best_model, loss_function, tag="Train")
     val_loop(val, best_model, loss_function, tag="Val")
     val_loop(test, best_model, loss_function, tag="Test")

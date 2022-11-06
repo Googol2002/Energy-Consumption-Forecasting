@@ -186,7 +186,7 @@ def train_model():
     _, train_accuracy = val_loop(train, best_model, loss_function, tag="Train")
     _, validation_accuracy = val_loop(val, best_model, loss_function, tag="Val")
     _, test_accuracy = val_loop(test, best_model, loss_function, tag="Test")
-    performance_log(TASK_ID, model=predictor, train_accuracy=train_accuracy,
+    performance_log(TASK_ID, model=best_model, train_accuracy=train_accuracy,
                     validation_accuracy=validation_accuracy, test_accuracy=test_accuracy)
     # 画图测试
     # display_dataset = DataLoader(val.dataset, batch_size=1, shuffle=True)
@@ -195,19 +195,21 @@ def train_model():
     plot_training_process(TASK_ID, filename="TrainProcess")
     plot_sensitivity_curve_weekly(TASK_ID, best_model, val.dataset, filename="SensitivityCurve")
 
+    print("正向Softmax:", best_model.softmax(best_model.attention[0]))
+    print("负向Softmax:", best_model.softmax(best_model.attention[1]))
+
 
 def test_model_on_whole_data():
-    predictor = load_task_model(TASK_ID, name="Date(2022-10-24 20-15-10).pth")
+    predictor = load_task_model(TASK_ID, name="Date(2022-11-06 16-51-41).pth")
     predictor.eval()
 
-    whole_dataset = London_11_14_random_select(train_l=X_LENGTH, test_l=Y_LENGTH, size=3500)
-    dataloader = DataLoader(whole_dataset, shuffle=True)
+    print("正向Softmax:", predictor.softmax(predictor.attention[0]))
+    print("负向Softmax:", predictor.softmax(predictor.attention[1]))
+    # whole_dataset = London_11_14_random_select(train_l=X_LENGTH, test_l=Y_LENGTH, size=3500)
+    # dataloader = DataLoader(whole_dataset, shuffle=True)
 
-    val_loop(dataloader, predictor, loss_function, tag="Whole Dataset")
-    plot_forecasting_weekly_for_comparison(TASK_ID, predictor, whole_dataset, LATITUDE_FACTOR, 230)
-    # plot_forecasting_samples_daily(TASK_ID, predictor, whole_dataset, LATITUDE_FACTOR, 230, filename="NextDay")
-    # plot_sensitivity_curve_weekly(TASK_ID, predictor, whole_dataset, filename="SensitivityCurve")
-
+    # val_loop(dataloader, predictor, loss_function, tag="Whole Dataset")
+    # plot_forecasting_weekly_for_comparison(TASK_ID, predictor, whole_dataset, LATITUDE_FACTOR, 230)
 
 
 RANDOM_SEED = 10001
@@ -216,4 +218,5 @@ if __name__ == "__main__":
     # test_model()
     # with mute_log_plot():
     # train_model()
+    # test_modl_on_whole_data()
     test_model_on_whole_data()

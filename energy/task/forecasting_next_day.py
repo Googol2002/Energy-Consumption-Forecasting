@@ -147,7 +147,7 @@ def train_model():
             break
 
     best_model.lstm.flatten_parameters()
-    performance_log(TASK_ID, "========Best Performance========\n", model=predictor)
+    performance_log(TASK_ID, "========Best Performance========\n", model=best_model)
     val_loop(val, best_model, loss_function)
     val_loop(test, best_model, loss_function, tag="Test")
     plot_forecasting_random_samples_daily(TASK_ID, best_model, test.dataset, LATITUDE_FACTOR, filename="Performance")

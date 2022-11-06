@@ -182,7 +182,7 @@ def train_model():
     _, train_accuracy = val_loop(train, best_model, loss_function, tag="Train")
     _, validation_accuracy = val_loop(val, best_model, loss_function, tag="Val")
     _, test_accuracy = val_loop(test, best_model, loss_function, tag="Test")
-    performance_log(TASK_ID, model=predictor, train_accuracy=train_accuracy,
+    performance_log(TASK_ID, model=best_model, train_accuracy=train_accuracy,
                     validation_accuracy=validation_accuracy, test_accuracy=test_accuracy)
     # 画图测试
     # display_dataset = DataLoader(val.dataset, batch_size=1, shuffle=True)

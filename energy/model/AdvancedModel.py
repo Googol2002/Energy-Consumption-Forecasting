@@ -105,7 +105,8 @@ class CNNModel(nn.Module):
 class CNN_Attention_Model(CNNModel):
     def __init__(self, *args, attention_size=30, **kwargs):
         super(CNN_Attention_Model, self).__init__(*args, **kwargs)
-        self.attention = nn.Parameter(torch.Tensor((2, attention_size))).to(device)
+        self.attention = nn.Parameter(torch.randn(2, 1, attention_size, 1, device=device))
+        self.softmax = nn.Softmax(dim=1)
 
     def forward(self, energy_xs, time_xs, time_ys):
         batch_size, seq_len = energy_xs.shape[0], energy_xs.shape[1]  # B, L
@@ -121,14 +122,18 @@ class CNN_Attention_Model(CNNModel):
         features = features.reshape(shape[0], shape[1], -1)
 
         output, (h_n, c_n) = self.lstm(torch.concat((features, time_xs), dim=-1), (h_0, c_0))
+        # TODO: 分别处理正向和反向，直接加权有些不合理
+        hidden_state = torch.sum(torch.cat([
+            output[:, :, :self.hidden_size] * self.softmax(self.attention[0]),
+            output[:, :, self.hidden_size:] * self.softmax(self.attention[1])
+        ], 2), dim=1)
 
         # B x L' x 2
-        return torch.stack([torch.stack((self.mlp_means(torch.cat([h_n[0], h_n[1], time_ys[:, day]], 1))
+        return torch.stack([torch.stack((self.mlp_means(torch.cat([hidden_state, time_ys[:, day]], 1))
                                          * self.means_scale_factor,
                                          self.mlp_variances(torch.cat([h_n[0], h_n[1], time_ys[:, day]], 1))
                                          * self.variances_scale_factor),
                                         dim=1) for day in range(predictive_seq_len)], dim=1)
-
 
 
 class TransformerModel(nn.Module):
