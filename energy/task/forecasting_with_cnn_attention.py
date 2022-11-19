@@ -195,16 +195,14 @@ def train_model():
     plot_training_process(TASK_ID, filename="TrainProcess")
     plot_sensitivity_curve_weekly(TASK_ID, best_model, val.dataset, filename="SensitivityCurve")
 
-    print("正向Softmax:", best_model.softmax(best_model.attention[0]))
-    print("负向Softmax:", best_model.softmax(best_model.attention[1]))
+    # print("正向Softmax:", best_model.softmax(best_model.attention[0]))
+    # print("负向Softmax:", best_model.softmax(best_model.attention[1]))
 
 
 def test_model_on_whole_data():
-    predictor = load_task_model(TASK_ID, name="Date(2022-11-06 16-51-41).pth")
+    predictor = load_task_model(TASK_ID, name="Date(2022-11-06 17-06-14).pth")
     predictor.eval()
 
-    print("正向Softmax:", predictor.softmax(predictor.attention[0]))
-    print("负向Softmax:", predictor.softmax(predictor.attention[1]))
     # whole_dataset = London_11_14_random_select(train_l=X_LENGTH, test_l=Y_LENGTH, size=3500)
     # dataloader = DataLoader(whole_dataset, shuffle=True)
 
@@ -217,6 +215,5 @@ torch.cuda.manual_seed(RANDOM_SEED)
 if __name__ == "__main__":
     # test_model()
     # with mute_log_plot():
-    # train_model()
-    # test_modl_on_whole_data()
-    test_model_on_whole_data()
+    train_model()
+    # test_model_on_whole_data()
