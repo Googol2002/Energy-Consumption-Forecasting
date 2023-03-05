@@ -8,7 +8,6 @@ from helper.device_manager import device
 MEANS_SCALE_FACTOR = 100000
 VARIANCES_SCALE_FACTOR = 100000000
 
-
 STABILIZING_FACTOR = 1e-5
 def customize_loss(variances_decay):
     def loss(outputs, labels):

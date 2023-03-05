@@ -82,8 +82,6 @@ regex_date = re.compile(r"Date\(([\d\- ]+?)\)\.pth")
 '''
 :parameter name: 如果为空的话，会默认加载最近生成的模型.
 '''
-
-
 def load_task_model(task_id, name=None):
     if not name:
         model_names = [os.fsdecode(file) for file in os.listdir(os.path.join(LOG_DIRECTORY, task_id))

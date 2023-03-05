@@ -24,4 +24,6 @@ else:
     _fetch_empty_device()
 
 
-
+def register_cuda_unit(cuda_unit):
+    global device
+    device = cuda_unit

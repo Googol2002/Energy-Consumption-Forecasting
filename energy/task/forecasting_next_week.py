@@ -133,6 +133,9 @@ def train_loop(dataloader, model, loss_fn, optimizer):
 
 loss_function = customize_loss(VARIANCES_DECAY)
 
+"""
+    不再保持更新
+"""
 def train_model():
     # dataset = London_11_14_set(train_l=X_LENGTH, test_l=Y_LENGTH, size=1500, times=4)
     # energy_expectations, energy_variances = dataset.statistics()

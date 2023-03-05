@@ -16,7 +16,7 @@ from model.PeriodicalModel import WeeklyModel, customize_loss
 from helper.log import log_printf, performance_log, load_task_model, record_training_process
 from helper import mute_log_plot
 
-from helper.device_manager import device
+from helper.device_manager import device, register_cuda_unit
 
 GRADIENT_NORM = 100
 WEIGHT_DECAY = 0.01
@@ -136,14 +136,14 @@ def train_loop(dataloader, model, loss_fn, optimizer):
 
 loss_function = customize_loss(VARIANCES_DECAY)
 
-def train_model():
-    # dataset = London_11_14_set(train_l=X_LENGTH, test_l=Y_LENGTH, size=1500, times=4)
-    # energy_expectations, energy_variances = dataset.statistics()
-    # train, val, test = construct_dataloader(dataset, batch_size=BATCH_SIZE)
+def train_model(dataset=None, cuda_unit=None):
 
-    # 新的数据集切分方式
-    train_set, val_and_test_set, energy_expectations, energy_variances = createDataSet(
-        train_l=X_LENGTH, label_l=Y_LENGTH, test_days=10, test_continuous=3, size=3500, times=10)
+    train_set, val_and_test_set, energy_expectations, energy_variances = dataset if dataset \
+        else createDataSet(train_l=X_LENGTH, label_l=Y_LENGTH, test_days=10,
+                           test_continuous=3, size=3500, times=10)
+    if cuda_unit is not None:
+        register_cuda_unit(cuda_unit)
+
     val, test = construct_dataloader(val_and_test_set, train_ratio=0.5,
                                      validation_ratio=0.5, test_ratio=0,
                                      batch_size=BATCH_SIZE)

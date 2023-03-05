@@ -110,6 +110,9 @@ def train_loop(dataloader, model, loss_fn, optimizer):
 
 loss_function = normal_loss
 
+"""
+    不再保持更新
+"""
 def train_model():
     dataset = LD2011_2014_summary_by_day(length=LENGTH,
                                          csv_file=r"dataset/LD2011_2014.csv",

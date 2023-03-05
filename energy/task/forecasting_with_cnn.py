@@ -136,14 +136,15 @@ def train_loop(dataloader, model, loss_fn, optimizer):
 
 loss_function = customize_loss(VARIANCES_DECAY)
 
-def train_model():
+def train_model(dataset=None):
     # dataset = London_11_14_set(train_l=X_LENGTH, test_l=Y_LENGTH, size=1500, times=4)
     # energy_expectations, energy_variances = dataset.statistics()
     # train, val, test = construct_dataloader(dataset, batch_size=BATCH_SIZE)
 
     # 新的数据集切分方式
-    train_set, val_and_test_set, energy_expectations, energy_variances = createDataSet(
-        train_l=X_LENGTH, label_l=Y_LENGTH, test_days=10, test_continuous=3, size=3500, times=10)
+    train_set, val_and_test_set, energy_expectations, energy_variances = dataset if dataset else\
+        createDataSet(train_l=X_LENGTH, label_l=Y_LENGTH, test_days=10,
+                      test_continuous=3, size=3500, times=10)
     val, test = construct_dataloader(val_and_test_set, train_ratio=0.5,
                                      validation_ratio=0.5, test_ratio=0,
                                      batch_size=BATCH_SIZE)
