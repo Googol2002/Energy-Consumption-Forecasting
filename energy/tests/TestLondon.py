@@ -5,14 +5,14 @@
 @time:2022-10-06
 """
 import numpy as np
-import matplotlib
-import matplotlib.pyplot as plt
+# import matplotlib
+# import matplotlib.pyplot as plt
 
 # matplotlib.use('TkAgg')
 import time
 import pandas as pd
 
-from energy.dataset.london_clean import London_11_14, London_11_14_random_select  # ,London_11_14_set_train
+from energy.dataset.london_clean import London_11_14, London_11_14_random_select
 from energy.dataset.london_clean import London_11_14_set_test, London_11_14_set, createDataSet
 
 
@@ -57,6 +57,7 @@ def test_London_11_14_set():
 
 def test_createDataSet():
     """
+    :param flod:第k折交叉验证得到的数据集，默认为0，总范围0~19
     :param train_l：X天数
     :param label_l：y天数
     :param test_days：测试集组数（不参与数据增强），实际占天数label_l*test_days
@@ -66,13 +67,13 @@ def test_createDataSet():
     :param ev_key: 期望和方差的统计长度，=1代表一天48列，=7代表一周48*7列
     测试集个数=label_l*test_days*test_continuous
     """
-    set1, set2, expectations, variances = createDataSet(train_l=10, label_l=7, test_days=3, test_continuous=5,
-                                                        size=3000,times=1, ev_key=1)
+    set1, set2, expectations, variances = createDataSet(flod=19, train_l=10, label_l=7, test_days=10, test_continuous=3,
+                                                        size=3000, times=1, ev_key=1)
     print("expectations_mean:", expectations.mean())
     print("variances_mean:", variances.mean())
-    print(set2[0])
+    # print(set2[0])
     print("train_lens:", len(set1), "test_lens:", len(set2))
-    print(set1[1])
+    # print(set1[1])
 
 
 ##直接用日或周均值来预测的效果
@@ -100,11 +101,11 @@ def direct_predict(ev_key=1, epoch=10):
         accuracy_t *= (100 / times)
         accuracy.append(accuracy_t)
 
-    print(f"Accuracy: {accuracy} \nMean:{np.mean(accuracy)} using {ev_key} days of expectations")
+    print("Accuracy: ", accuracy, " \nMean:", np.mean(accuracy), " using ", ev_key, " days of expectations")
 
 
 test_createDataSet()
-direct_predict(ev_key=1, epoch=10)
+# direct_predict(ev_key=1, epoch=10)
 
 # #dataset绘图
 # START = 0

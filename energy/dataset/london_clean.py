@@ -17,12 +17,6 @@ import torch
 # import tensorflow as tf
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
-"""
-最后的输出格式：X, y,X_1,y_1
-X:L * W, y:L' * W,X_1:L * 19, y_1:L' * 19
-L 是序列长，L'是答案长,W是24h内的数据点(48)
-"""
-
 SIZE = 10
 TIMES = 10
 Train_length = 10
@@ -47,37 +41,28 @@ class London_11_14(Dataset):
 
         LOG_DIRECTORY = "dataset/london_clean"
         success_read_file = []
-        t_begin = time.time()
+
         for f in select_file_list:
             file_name = "cleaned_household_MAC0" + str(f) + ".csv"
             file_name = os.path.join(LOG_DIRECTORY, file_name).replace('\\', '/')
-            # print(file_name)
             if os.path.exists(file_name):
                 df_temp = pd.read_csv(file_name, header=0, usecols=[4, 3], decimal=",")
                 df_temp[df_temp.columns[-1]] = df_temp[df_temp.columns[-1]].astype(float)
                 if df_temp.shape[0] > 20000:
                     success_read_file.append(df_temp)  # 读取每个表格
-        # print("success read:",len(success_read_file))
-        t_end = time.time()
-        # print("time for read:", t_end - t_begin)
 
         # 初始化求和表
         file_name = "cleaned_household_MAC000002.csv"
         file_name = os.path.join(LOG_DIRECTORY, file_name).replace('\\', '/')
         df_merge = pd.read_csv(file_name, header=0, usecols=[4, 3], decimal=",")
-        # print(df_merge)
 
         # 合并
-        t_begin = time.time()
         values = ['_' + str(i) for i in range(6000)]  # 用于merge中重复列的重命名
         for i in range(len(success_read_file)):
             df_merge = pd.merge(df_merge, success_read_file[i], how='outer', on='DateTime', sort=True,
                                 suffixes=('', values[i])).replace(np.nan, 0)
         df_merge[df_merge.columns[1]] = 0
         self.before_sum = df_merge
-        t_end = time.time()
-        # print("time for merge:", t_end - t_begin)
-        # print(df_merge)
 
         # 求和
         t_begin = time.time()
@@ -85,14 +70,11 @@ class London_11_14(Dataset):
         df_merge = df_merge.drop(df_merge.columns[1:-1], axis=1)
         t_end = time.time()
 
-        # print("time for sum:",t_end-t_begin)
-        # t_begin = time.time()
         # while (df_merge.shape[1] >= 3):
         #     df_merge[df_merge.columns[1]] = df_merge[df_merge.columns[1]] + \
         #                                     df_merge[df_merge.columns[-1]]
         #     df_merge = df_merge.drop(df_merge.columns[-1], axis=1)
-        # t_end = time.time()
-        # print("time for sum:", t_end - t_begin)
+
         # 添加周&月独热编码
         def get_one_hot(index, size):
             '''
@@ -133,10 +115,6 @@ class London_11_14(Dataset):
         self.data_month = np.array(self.data_all[self.data_all.columns[3]].values.tolist())
         self.days = int(self.data_only.shape[0] / 48)
         self.counts = self.days - test_l - train_l + 1  # (X,y)总行数
-
-        # 输出
-        # outputpath='../../dataset/example.csv'
-        # df_merge.to_csv(outputpath,sep=',',index=False)
 
     def __len__(self):
         return self.counts
@@ -343,6 +321,7 @@ class London_11_14_set(London_11_14_random_select):
 
 class London_11_14_set_test(Dataset):
     """
+    :param flod:第k折交叉验证得到的数据集，默认为0，总范围0~19
     :param train_l：X天数
     :param label_l：y天数
     :param test_days：测试集组数（不参与数据增强），实际占天数label_l*test_days
@@ -351,9 +330,10 @@ class London_11_14_set_test(Dataset):
     :param size: 随机抽取的用户数量，上限5068
     """
 
-    def __init__(self, train_l=Train_length, label_l=Test_length, test_days=10,
+    def __init__(self, flod=0, train_l=Train_length, label_l=Test_length, test_days=10,
                  test_continuous=1, size=SIZE, times=TIMES):
         # super().__init__(train_l=Train_length, label_l=Test_length, test_days=70, size=SIZE, times=TIMES)
+        self.flod = flod
         self.train_l = train_l
         self.label_l = label_l
         self.test_continuous = test_continuous
@@ -363,7 +343,8 @@ class London_11_14_set_test(Dataset):
         self.times = times
         self.days = 378 - self.train_l - self.label_l
         self.train_days = self.days - self.test_days
-        self.test_list = sorted(random.sample(list(range(self.test_continuous, self.days)), self.test_groups))
+        self.test_list = (np.array(sorted(
+            random.sample(list(range(self.test_continuous, self.days - 19)), self.test_groups))) + self.flod).tolist()
         print("test_list:", self.test_list)
         self.data_test = []
         other = London_11_14_random_select(train_l=self.train_l, test_l=self.label_l, size=self.size)
@@ -401,9 +382,10 @@ def record_time(func):
 
 
 @record_time
-def createDataSet(train_l=Train_length, label_l=Test_length, test_days=10,
+def createDataSet(flod=0, train_l=Train_length, label_l=Test_length, test_days=10,
                   test_continuous=1, size=SIZE, times=TIMES, ev_key=1):
     """
+        :param flod:第k折交叉验证得到的数据集，默认为0，总范围0~19
         :param train_l：X天数
         :param label_l：y天数
         :param test_days：测试集组数（不参与数据增强），实际占天数label_l*test_days
@@ -412,7 +394,8 @@ def createDataSet(train_l=Train_length, label_l=Test_length, test_days=10,
         :param size: 随机抽取的用户数量，上限5068
         :param ev_key: 期望和方差的统计意义，=1代表一天48列，=7代表一周48*7列
     """
-    set2 = London_11_14_set_test(train_l=train_l, label_l=label_l, test_days=test_days, test_continuous=test_continuous,
+    set2 = London_11_14_set_test(flod=flod, train_l=train_l, label_l=label_l, test_days=test_days,
+                                 test_continuous=test_continuous,
                                  size=size, times=times)
     set1 = London_11_14_set(train_l=train_l, label_l=label_l, test_days=test_days, test_continuous=test_continuous,
                             size=size, times=times, test_list=set2.get_test_list(), ev_key=ev_key)
