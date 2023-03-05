@@ -10,7 +10,7 @@ import glob, os
 import random
 import datetime
 from torch.utils.data import Dataset, DataLoader
-
+import time
 
 import copy
 import torch
@@ -124,7 +124,7 @@ class London_11_14(Dataset):
         assert (index < self.__len__())
         row_offset = index * 48
         x, y = self.dataset[row_offset: row_offset + self.train_l * 48], \
-               self.dataset[row_offset + self.train_l * 48: row_offset + (self.train_l + self.test_l) * 48]
+            self.dataset[row_offset + self.train_l * 48: row_offset + (self.train_l + self.test_l) * 48]
         x = x.reshape(self.train_l, 48)
         y = y.reshape(self.test_l, 48)
         x_1 = np.append(self.data_week[row_offset: row_offset + self.train_l * 48:48],
@@ -217,7 +217,7 @@ class London_11_14_random_select(Dataset):
         assert (index < self.__len__())
         row_offset = index * 48
         x, y = self.dataset[row_offset: row_offset + self.train_l * 48], \
-               self.dataset[row_offset + self.train_l * 48: row_offset + (self.train_l + self.test_l) * 48]
+            self.dataset[row_offset + self.train_l * 48: row_offset + (self.train_l + self.test_l) * 48]
         x = x.reshape(self.train_l, 48)
         y = y.reshape(self.test_l, 48)
         x_1 = np.append(self.data_week[row_offset: row_offset + self.train_l * 48:48],
@@ -332,7 +332,7 @@ class London_11_14_set_test(Dataset):
     :param size: 随机抽取的用户数量，上限5068
     """
 
-    def __init__(self, flod=0,k_flod=20, train_l=Train_length, label_l=Test_length, test_days=10,
+    def __init__(self, flod=0, k_flod=20, train_l=Train_length, label_l=Test_length, test_days=10,
                  test_continuous=1, size=SIZE, times=TIMES, k_flod_test_list=None):
         # super().__init__(train_l=Train_length, label_l=Test_length, test_days=70, size=SIZE, times=TIMES)
         self.flod = flod
@@ -345,13 +345,13 @@ class London_11_14_set_test(Dataset):
         self.times = times
         self.days = 378 - self.train_l - self.label_l
         self.train_days = self.days - self.test_days
-        self.k_flod_test_list = k_flod_test_list if k_flod_test_list else []  #已随机划分好的基准k折测试集
-        self.test_list = (np.array(self.k_flod_test_list)+ self.flod*self.test_continuous).tolist()
+        self.k_flod_test_list = k_flod_test_list if k_flod_test_list else []  # 已随机划分好的基准k折测试集
+        self.test_list = (np.array(self.k_flod_test_list) + self.flod * self.test_continuous).tolist()
         print("test_list:", self.test_list)
         self.data_test = []
         other = London_11_14_random_select(train_l=self.train_l, test_l=self.label_l, size=self.size)
         # 取出测试集
-        self.data_lst=[]#存储times次数据集
+        self.data_lst = []  # 存储times次数据集
         for i in range(self.times):
             other = London_11_14_random_select(train_l=self.train_l, test_l=self.label_l, size=self.size)
             self.data_lst.append(other)
@@ -369,7 +369,7 @@ class London_11_14_set_test(Dataset):
         x, y, x_1, y_1 = self.data_test[index]
         return x, y, x_1, y_1
 
-    def get_test_list(self):#用于传递测试集index，防止泄露在train中
+    def get_test_list(self):  # 用于传递测试集index，防止泄露在train中
         return self.test_list
 
     def get_data_list(self):  # 用于传递times次抽取的数据集
@@ -389,10 +389,10 @@ def record_time(func):
 
 
 @record_time
-def createDataSet(flod=0,k_flod=20, train_l=Train_length, label_l=Test_length, test_days=10,
+def createDataSet(k_flod=20, train_l=Train_length, label_l=Test_length, test_days=10,
                   test_continuous=1, size=SIZE, times=TIMES, ev_key=1):
     """
-        :param flod:第k折交叉验证得到的数据集，默认为0，总范围range(0,k_flod)
+        :param k_flod:k折交叉验证
         :param train_l：X天数
         :param label_l：y天数
         :param test_days：测试集组数（不参与数据增强），实际占天数label_l*test_days
@@ -402,13 +402,32 @@ def createDataSet(flod=0,k_flod=20, train_l=Train_length, label_l=Test_length, t
         :param ev_key: 期望和方差的统计意义，=1代表一天48列，=7代表一周48*7列
     """
     k_flod_test_list = (np.array(sorted(
-        random.sample(list(range(test_continuous, 378 - train_l - label_l - k_flod * test_continuous + 1)),test_days)
-    )) ).tolist()#已随机划分好的基准k折测试集
-    set2 = London_11_14_set_test(flod=flod,k_flod=k_flod, train_l=train_l, label_l=label_l, test_days=test_days,
-                                 test_continuous=test_continuous,size=size, times=times,k_flod_test_list=k_flod_test_list,)
-    set1 = London_11_14_set(train_l=train_l, label_l=label_l, test_days=test_days, test_continuous=test_continuous,
-                            size=size, times=times, test_list=set2.get_test_list(), data_list=set2.get_data_list(), ev_key=ev_key)
-    print("train_l=", train_l, "label_l=", label_l, "test_days=", test_days, "test_continuous=", test_continuous,
-          'size=', size, 'times=', times, "ev_key=", ev_key)
-    e, v = set1.statistics()
-    return set1, set2, e, v
+        random.sample(
+            list(range(test_continuous, 378 - train_l - label_l - k_flod * test_continuous + 1, test_continuous)),
+            test_days)
+    ))).tolist()  # 已随机划分好的基准k折测试集
+    print("k_flod_test_list:", k_flod_test_list)
+    set2_flod = []
+    set1_flod = []
+    e_flod = []
+    v_flod = []
+    for flod in range(k_flod):
+        set2 = London_11_14_set_test(flod=flod, k_flod=k_flod, train_l=train_l, label_l=label_l, test_days=test_days,
+                                     test_continuous=test_continuous, size=size, times=times,
+                                     k_flod_test_list=k_flod_test_list, )
+        set1 = London_11_14_set(train_l=train_l, label_l=label_l, test_days=test_days, test_continuous=test_continuous,
+                                size=size, times=times, test_list=set2.get_test_list(), data_list=set2.get_data_list(),
+                                ev_key=ev_key)
+        # print("train_l=", train_l, "label_l=", label_l, "test_days=", test_days, "test_continuous=", test_continuous,
+        #       'size=', size, 'times=', times, "ev_key=", ev_key)
+        e, v = set1.statistics()
+        set2_flod.append(set2)
+        set1_flod.append(set1)
+        e_flod.append(e)
+        v_flod.append(v)
+    return set1_flod, set2_flod, e_flod, v_flod
+
+
+if __name__ == '__main__':
+    set1, set2, e, v = createDataSet(k_flod=10, train_l=Train_length, label_l=Test_length, test_days=10,
+                                     test_continuous=3, size=SIZE, times=TIMES, ev_key=1)
