@@ -428,6 +428,12 @@ def createDataSet(k_flod=20, train_l=Train_length, label_l=Test_length, test_day
     return set1_flod, set2_flod, e_flod, v_flod
 
 
+def createDataSetSingleFold(**kwargs):
+    set1_flod, set2_flod, e_flod, v_flod = createDataSet(k_flod=10, **kwargs)
+    return set1_flod[0], set2_flod[0], e_flod[0], v_flod[0]
+
+
+
 if __name__ == '__main__':
     set1, set2, e, v = createDataSet(k_flod=10, train_l=Train_length, label_l=Test_length, test_days=10,
                                      test_continuous=3, size=SIZE, times=TIMES, ev_key=1)
