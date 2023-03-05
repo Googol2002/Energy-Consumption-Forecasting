@@ -10,7 +10,8 @@ import glob, os
 import random
 import datetime
 from torch.utils.data import Dataset, DataLoader
-import time
+
+
 import copy
 import torch
 
@@ -266,7 +267,7 @@ class London_11_14_set(London_11_14_random_select):
     """
 
     def __init__(self, train_l=Train_length, label_l=Test_length, test_days=10,
-                 test_continuous=1, size=SIZE, times=TIMES, test_list=None, ev_key=1):
+                 test_continuous=1, size=SIZE, times=TIMES, test_list=None, data_list=None, ev_key=1):
         self.train_l = train_l
         self.label_l = label_l
         self.test_continuous = test_continuous
@@ -274,6 +275,7 @@ class London_11_14_set(London_11_14_random_select):
         self.size = size
         self.times = times
         self.test_list = test_list if test_list else []  # 解决list=[]传递异常
+        self.data_list = data_list if data_list else []
         self.expectations, self.variances = 0.0, 0.0
 
         def merge_e(x, m, y, n):
@@ -294,7 +296,7 @@ class London_11_14_set(London_11_14_random_select):
             return False
 
         for i in range(self.times):
-            other = London_11_14_random_select(train_l=self.train_l, test_l=self.label_l, size=self.size)
+            other = self.data_list[i]
             e, v = other.statistics(ev_key)
             self.variances = merge_v(self.variances, len(self.lst), v, other.counts, self.expectations, e)
             self.expectations = merge_e(self.expectations, len(self.lst), e, other.counts)
@@ -321,7 +323,7 @@ class London_11_14_set(London_11_14_random_select):
 
 class London_11_14_set_test(Dataset):
     """
-    :param flod:第k折交叉验证得到的数据集，默认为0，总范围0~19
+    :param flod:第k折交叉验证得到的数据集，默认为0，总范围range(0,k_flod)
     :param train_l：X天数
     :param label_l：y天数
     :param test_days：测试集组数（不参与数据增强），实际占天数label_l*test_days
@@ -330,8 +332,8 @@ class London_11_14_set_test(Dataset):
     :param size: 随机抽取的用户数量，上限5068
     """
 
-    def __init__(self, flod=0, train_l=Train_length, label_l=Test_length, test_days=10,
-                 test_continuous=1, size=SIZE, times=TIMES):
+    def __init__(self, flod=0,k_flod=20, train_l=Train_length, label_l=Test_length, test_days=10,
+                 test_continuous=1, size=SIZE, times=TIMES, k_flod_test_list=None):
         # super().__init__(train_l=Train_length, label_l=Test_length, test_days=70, size=SIZE, times=TIMES)
         self.flod = flod
         self.train_l = train_l
@@ -343,14 +345,16 @@ class London_11_14_set_test(Dataset):
         self.times = times
         self.days = 378 - self.train_l - self.label_l
         self.train_days = self.days - self.test_days
-        self.test_list = (np.array(sorted(
-            random.sample(list(range(self.test_continuous, self.days - 19)), self.test_groups))) + self.flod).tolist()
+        self.k_flod_test_list = k_flod_test_list if k_flod_test_list else []  #已随机划分好的基准k折测试集
+        self.test_list = (np.array(self.k_flod_test_list)+ self.flod*self.test_continuous).tolist()
         print("test_list:", self.test_list)
         self.data_test = []
         other = London_11_14_random_select(train_l=self.train_l, test_l=self.label_l, size=self.size)
         # 取出测试集
+        self.data_lst=[]#存储times次数据集
         for i in range(self.times):
             other = London_11_14_random_select(train_l=self.train_l, test_l=self.label_l, size=self.size)
+            self.data_lst.append(other)
             for k in range(len(self.test_list)):
                 for m in range(self.test_continuous):
                     self.data_test.append(other[self.test_list[k] - m])
@@ -365,8 +369,11 @@ class London_11_14_set_test(Dataset):
         x, y, x_1, y_1 = self.data_test[index]
         return x, y, x_1, y_1
 
-    def get_test_list(self):
+    def get_test_list(self):#用于传递测试集index，防止泄露在train中
         return self.test_list
+
+    def get_data_list(self):  # 用于传递times次抽取的数据集
+        return self.data_lst
 
 
 # 尝试一个记录时间装饰器，事实上关键字参数不好传递？
@@ -382,10 +389,10 @@ def record_time(func):
 
 
 @record_time
-def createDataSet(flod=0, train_l=Train_length, label_l=Test_length, test_days=10,
+def createDataSet(flod=0,k_flod=20, train_l=Train_length, label_l=Test_length, test_days=10,
                   test_continuous=1, size=SIZE, times=TIMES, ev_key=1):
     """
-        :param flod:第k折交叉验证得到的数据集，默认为0，总范围0~19
+        :param flod:第k折交叉验证得到的数据集，默认为0，总范围range(0,k_flod)
         :param train_l：X天数
         :param label_l：y天数
         :param test_days：测试集组数（不参与数据增强），实际占天数label_l*test_days
@@ -394,11 +401,13 @@ def createDataSet(flod=0, train_l=Train_length, label_l=Test_length, test_days=1
         :param size: 随机抽取的用户数量，上限5068
         :param ev_key: 期望和方差的统计意义，=1代表一天48列，=7代表一周48*7列
     """
-    set2 = London_11_14_set_test(flod=flod, train_l=train_l, label_l=label_l, test_days=test_days,
-                                 test_continuous=test_continuous,
-                                 size=size, times=times)
+    k_flod_test_list = (np.array(sorted(
+        random.sample(list(range(test_continuous, 378 - train_l - label_l - k_flod * test_continuous + 1)),test_days)
+    )) ).tolist()#已随机划分好的基准k折测试集
+    set2 = London_11_14_set_test(flod=flod,k_flod=k_flod, train_l=train_l, label_l=label_l, test_days=test_days,
+                                 test_continuous=test_continuous,size=size, times=times,k_flod_test_list=k_flod_test_list,)
     set1 = London_11_14_set(train_l=train_l, label_l=label_l, test_days=test_days, test_continuous=test_continuous,
-                            size=size, times=times, test_list=set2.get_test_list(), ev_key=ev_key)
+                            size=size, times=times, test_list=set2.get_test_list(), data_list=set2.get_data_list(), ev_key=ev_key)
     print("train_l=", train_l, "label_l=", label_l, "test_days=", test_days, "test_continuous=", test_continuous,
           'size=', size, 'times=', times, "ev_key=", ev_key)
     e, v = set1.statistics()
