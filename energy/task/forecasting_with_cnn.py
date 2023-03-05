@@ -7,7 +7,7 @@ from torch import nn
 from torch.utils.data import DataLoader
 
 from dataset import London_11_14_random_select, construct_dataloader
-from dataset.london_clean import London_11_14_set, createDataSet
+from dataset.london_clean import London_11_14_set, createDataSet, createDataSetSingleFold
 from helper.plot import plot_forecasting_random_samples_weekly, plot_training_process, plot_sensitivity_curve_weekly, \
     plot_forecasting_weekly_for_comparison, plot_forecasting_samples_daily
 from model.AdvancedModel import CNNModel
@@ -143,8 +143,8 @@ def train_model(dataset=None):
 
     # 新的数据集切分方式
     train_set, val_and_test_set, energy_expectations, energy_variances = dataset if dataset else\
-        createDataSet(train_l=X_LENGTH, label_l=Y_LENGTH, test_days=10,
-                      test_continuous=3, size=3500, times=10)
+        createDataSetSingleFold(train_l=X_LENGTH, label_l=Y_LENGTH, test_days=10,
+                                test_continuous=3, size=3500, times=10)
     val, test = construct_dataloader(val_and_test_set, train_ratio=0.5,
                                      validation_ratio=0.5, test_ratio=0,
                                      batch_size=BATCH_SIZE)

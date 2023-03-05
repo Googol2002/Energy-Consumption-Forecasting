@@ -429,7 +429,7 @@ def createDataSet(k_flod=20, train_l=Train_length, label_l=Test_length, test_day
 
 
 def createDataSetSingleFold(**kwargs):
-    set1_flod, set2_flod, e_flod, v_flod = createDataSet(k_flod=10, **kwargs)
+    set1_flod, set2_flod, e_flod, v_flod = createDataSet(k_flod=1, **kwargs)
     return set1_flod[0], set2_flod[0], e_flod[0], v_flod[0]
 
 
