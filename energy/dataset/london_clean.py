@@ -347,6 +347,7 @@ class London_11_14_set_test(Dataset):
         self.train_days = self.days - self.test_days
         self.k_flod_test_list = k_flod_test_list if k_flod_test_list else []  # 已随机划分好的基准k折测试集
         self.test_list = (np.array(self.k_flod_test_list) + self.flod * self.test_continuous).tolist()
+        assert (self.test_list[-1]<=self.days)#防止溢出
         print("test_list:", self.test_list)
         self.data_test = []
         other = London_11_14_random_select(train_l=self.train_l, test_l=self.label_l, size=self.size)
@@ -389,7 +390,7 @@ def record_time(func):
 
 
 @record_time
-def createDataSet(k_flod=20, train_l=Train_length, label_l=Test_length, test_days=10,
+def createDataSet(k_flod=10, train_l=Train_length, label_l=Test_length, test_days=10,
                   test_continuous=1, size=SIZE, times=TIMES, ev_key=1):
     """
         :param k_flod:k折交叉验证
