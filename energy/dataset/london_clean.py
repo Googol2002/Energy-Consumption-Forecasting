@@ -18,9 +18,9 @@ import torch
 # import tensorflow as tf
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
-SIZE = 10
+SIZE = 4000
 TIMES = 10
-Train_length = 10
+Train_length = 30
 Test_length = 7
 
 
@@ -426,8 +426,8 @@ def createDataSet(k_flod=10, train_l=Train_length, label_l=Test_length, test_day
         set1_flod.append(set1)
         e_flod.append(e)
         v_flod.append(v)
-    output_data=[set1_flod, set2_flod, e_flod, v_flod]
-    torch.save(output_data,"./dataset/10_flod_split.pt")
+        output_data=[set1, set2, e, v]
+        torch.save(output_data,"./dataset/10_flod_split/10_flod_split_0"+str(flod)+".pt")
 
     return set1_flod, set2_flod, e_flod, v_flod
 
@@ -439,6 +439,12 @@ def createDataSetSingleFold(**kwargs):
 
 
 if __name__ == '__main__':
-    createDataSet(k_flod=10, train_l=Train_length, label_l=Test_length, test_days=10,
-                                     test_continuous=3, size=SIZE, times=TIMES, ev_key=1)
-    y=torch.load("./dataset/10_flod_split.pt")
+    # createDataSet(k_flod=10, train_l=Train_length, label_l=Test_length, test_days=10,
+    #                                  test_continuous=3, size=SIZE, times=TIMES, ev_key=1)
+    y=torch.load("dataset/10_flod_split/10_flod_split_00.pt")
+    train_set=y[0]
+    test_set=y[1]
+    e=y[2]
+    v=y[3]
+    print(len(train_set),train_set[0])
+
