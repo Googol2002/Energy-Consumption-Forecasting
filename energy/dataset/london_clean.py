@@ -428,7 +428,8 @@ def createDataSet(k_flod=10, train_l=Train_length, label_l=Test_length, test_day
         v_flod.append(v)
     output_data=[set1_flod, set2_flod, e_flod, v_flod]
     torch.save(output_data,"./dataset/10_flod_split.pt")
-    #return set1_flod, set2_flod, e_flod, v_flod
+
+    return set1_flod, set2_flod, e_flod, v_flod
 
 
 def createDataSetSingleFold(**kwargs):

@@ -199,6 +199,11 @@ def train_model(dataset=None, cuda_unit=None):
     # print("负向Softmax:", best_model.softmax(best_model.attention[1]))
 
 
+def create_dataset_multitask(k_flod=2):
+    return createDataSet(k_flod=k_flod, train_l=X_LENGTH, label_l=Y_LENGTH, test_days=10,
+                         test_continuous=3, size=3500, times=10)
+
+
 def test_model_on_whole_data():
     predictor = load_task_model(TASK_ID, name="Date(2022-11-06 17-06-14).pth")
     predictor.eval()
