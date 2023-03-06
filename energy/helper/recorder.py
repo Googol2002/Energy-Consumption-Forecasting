@@ -21,7 +21,7 @@ class Recorder:
         self.task_id = task_id
         self.to_console = to_console
         self.to_disk = to_disk
-        # 记录数据
+        # 记录数据，需要被保存在JSON中
         self.gradient_norms, self.train_losses, self.val_losses = [], [], []
 
     def _model_directory_path(self):
@@ -34,7 +34,7 @@ class Recorder:
         raise NotImplementedError()
 
     def _update_performance(self, train_accuracy, validation_accuracy,
-                                    test_accuracy, model_name):
+                            test_accuracy, model_name):
         path = self._performance_path()
         performance = pd.DataFrame({"datetime": [self.date_tag], "train": [train_accuracy],
                                     "validation": [validation_accuracy], "test": [test_accuracy],
@@ -103,3 +103,41 @@ class SingleTaskRecorder(Recorder):
 
     def _performance_path(self):
         return os.path.join(LOG_DIRECTORY, self.task_id, "performance.csv")
+
+
+class MultiTaskRecorder(Recorder):
+
+    def __init__(self, task_id, process_id, to_console=True, to_disk=True, date_tag=None):
+        super().__init__(task_id, to_console=to_console, to_disk=to_disk)
+        self.process_id = process_id
+        if date_tag:
+            self.date_tag = date_tag
+
+    def _model_directory_path(self):
+        path = os.path.join(LOG_DIRECTORY, self.task_id, self.date_tag,
+                            "model", "processor({})".format(self.process_id))
+        # 判断是否存在文件夹如果不存在则创建为文件夹
+        if not os.path.exists(path):
+            os.makedirs(path)
+
+        return path
+
+    def _stdout_path(self):
+        folder = os.path.join(LOG_DIRECTORY, self.task_id, self.date_tag,
+                              "output", "processor({})".format(self.process_id))
+        path = os.path.join(folder, r"Test-Report-Date({}).txt".format(self.date_tag))
+        # 判断是否存在文件夹如果不存在则创建为文件夹
+        if not os.path.exists(folder):
+            os.makedirs(folder)
+
+        return path
+
+    def _performance_path(self):
+        raise NotImplementedError()
+
+    """
+    多任务训练暂时不支持更新表现
+    """
+    def _update_performance(self, train_accuracy, validation_accuracy,
+                            test_accuracy, model_name):
+        pass

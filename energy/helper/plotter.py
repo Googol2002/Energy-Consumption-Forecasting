@@ -137,7 +137,8 @@ class SingleTaskPlotter(Plotter):
 class MultiTaskPlotter(Plotter):
 
     def _save_figure(self, fig_name):
-        path = os.path.join(LOG_DIRECTORY, self.task_id, "figure")
+        path = os.path.join(LOG_DIRECTORY, self.task_id, self.recorder.date_tag, "figure",
+                            "processor({})".format(self.recorder.process_id))
         # 判断是否存在文件夹如果不存在则创建为文件夹
         if not os.path.exists(path):
             os.makedirs(path)
