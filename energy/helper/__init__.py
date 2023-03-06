@@ -14,3 +14,4 @@ def mute_log_plot():
     is_muted = True
     yield
     is_muted = False
+

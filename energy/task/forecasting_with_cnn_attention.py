@@ -8,15 +8,14 @@ from torch.utils.data import DataLoader
 
 from dataset import London_11_14_random_select, construct_dataloader
 from dataset.london_clean import London_11_14_set, createDataSet, createDataSetSingleFold
-from helper.plot import plot_forecasting_random_samples_weekly, plot_training_process, plot_sensitivity_curve_weekly, \
-    plot_forecasting_weekly_for_comparison, plot_forecasting_samples_daily
+from helper.plot import plot_forecasting_random_samples_weekly, plot_training_process, plot_sensitivity_curve_weekly
+
 from model.AdvancedModel import CNN_Attention_Model
 from model.PeriodicalModel import WeeklyModel, customize_loss
 
 from helper.log import log_printf, performance_log, load_task_model, record_training_process
-from helper import mute_log_plot
 
-from helper.device_manager import device, register_cuda_unit
+import helper.device_manager as device_manager
 
 GRADIENT_NORM = 100
 WEIGHT_DECAY = 0.01
@@ -27,7 +26,7 @@ PERIOD = 48
 TIME_SIZE = 7 + 12
 X_LENGTH = 30
 Y_LENGTH = 7
-EPOCH_STEP = 200
+EPOCH_STEP = 5
 TOLERANCE = 40
 LATITUDE_FACTOR = 1
 LEARNING_RATE = 2e-3
@@ -55,6 +54,7 @@ def check_gradient_norm_L2(model):
 def regression_display(model, sample):
     energy_x, energy_y, time_x, time_y = sample
 
+    device = device_manager.device
     with torch.no_grad():
         pred = model(energy_x.to(device, dtype=torch.float32),
                      time_x.to(device, dtype=torch.float32),
@@ -80,6 +80,7 @@ def val_loop(dataloader, model, loss_fn, tag="Val"):
     size = len(dataloader.dataset)
     val_loss, accuracy, within, utilization = 0, 0, 0, 0
 
+    device = device_manager.device
     with torch.no_grad():
         for (energy_x, energy_y, time_x, time_y) in dataloader:
             energy_x, time_x = energy_x.to(device, dtype=torch.float32), time_x.to(device, dtype=torch.float32)
@@ -106,6 +107,8 @@ def val_loop(dataloader, model, loss_fn, tag="Val"):
 def train_loop(dataloader, model, loss_fn, optimizer):
     size = len(dataloader.dataset)
     total_loss, gradient_norm = 0, 0
+
+    device = device_manager.device
     for batch, (energy_x, energy_y, time_x, time_y) in enumerate(dataloader):
         energy_x, time_x = energy_x.to(device, dtype=torch.float32), time_x.to(device, dtype=torch.float32)
         energy_y, time_y = energy_y.to(device, dtype=torch.float32), time_y.to(device, dtype=torch.float32)
@@ -136,13 +139,13 @@ def train_loop(dataloader, model, loss_fn, optimizer):
 
 loss_function = customize_loss(VARIANCES_DECAY)
 
-def train_model(dataset=None, cuda_unit=None):
+def train_model(dataset=None, process_id=None):
+    global TASK_ID
+    TASK_ID = "{}({})".format(TASK_ID, process_id)
 
     train_set, val_and_test_set, energy_expectations, energy_variances = dataset if dataset \
         else createDataSetSingleFold(train_l=X_LENGTH, label_l=Y_LENGTH, test_days=10,
                                      test_continuous=3, size=3500, times=10)
-    if cuda_unit is not None:
-        register_cuda_unit(cuda_unit)
 
     val, test = construct_dataloader(val_and_test_set, train_ratio=0.5,
                                      validation_ratio=0.5, test_ratio=0,

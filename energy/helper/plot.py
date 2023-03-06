@@ -12,8 +12,6 @@ import random
 from helper import is_muted, LOG_DIRECTORY, training_recoder
 from helper.log import date_tag
 
-from helper.device_manager import device
-
 FIGURE_DIRECTORY = r"figure"
 
 plt.rcParams["font.sans-serif"] = ["Microsoft YaHei"]  # 设置字体
@@ -96,6 +94,7 @@ def plot_forecasting_random_samples_weekly(task_id, model, dataset, factor, size
     fig.tight_layout(pad=5.0)
     display_dataset = DataLoader(dataset, batch_size=size, shuffle=True)
 
+    device = model.device
     batch, (energy_x, energy_y, time_x, time_y) = next(iter(enumerate(display_dataset)))
     with torch.no_grad():
         pred = model(energy_x.to(device, dtype=torch.float32),
@@ -156,7 +155,7 @@ def plot_forecasting_weekly_for_comparison(task_id, model, dataset, factor, inde
         plt.show()
 
     energy_x, energy_y, time_x, time_y = [torch.Tensor(v).unsqueeze(0) for v in dataset[index]]
-
+    device = model.device
     with torch.no_grad():
         pred = model(energy_x.to(device, dtype=torch.float32),
                      time_x.to(device, dtype=torch.float32),
@@ -178,6 +177,7 @@ def plot_forecasting_samples_daily(task_id, model, dataset, factor, index, filen
     plt.figure(figsize=(12, 8))
 
     energy_x, energy_y, time_x, time_y = [torch.Tensor(v).unsqueeze(0) for v in dataset[index]]
+    device = model.device
     with torch.no_grad():
         pred = model(energy_x.to(device, dtype=torch.float32),
                      time_x.to(device, dtype=torch.float32),
@@ -209,6 +209,7 @@ def plot_sensitivity_curve_weekly(task_id, model, dataset, tolerance_range=None,
     @np.vectorize
     def evaluate(tolerance):
         within, utilization = 0, 0
+        device = model.device
         with torch.no_grad():
             for (energy_x, energy_y, time_x, time_y) in dataloader:
                 energy_x, time_x = energy_x.to(device, dtype=torch.float32), time_x.to(device, dtype=torch.float32)

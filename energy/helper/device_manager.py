@@ -12,11 +12,8 @@ def _fetch_empty_device():
 
 
 parser = argparse.ArgumentParser(description='The Oracle是一个电力负载预测模型.')
-parser.add_argument('--gpu', type=str, nargs=1,
-                    help='设备名', metavar="cuda:0")
+parser.add_argument('--gpu', type=str, nargs=1, help='设备名')
 args = parser.parse_args()
-
-device = "cuda:0"
 
 if args.gpu is not None:
     device = torch.device(args.gpu[0] if torch.cuda.is_available() else "cpu")
@@ -27,3 +24,4 @@ else:
 def register_cuda_unit(cuda_unit):
     global device
     device = cuda_unit
+    print("set device to " + device)

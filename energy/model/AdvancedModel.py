@@ -2,7 +2,7 @@ import torch
 from torch import nn
 from torch.nn import TransformerEncoderLayer, TransformerEncoder
 
-from helper.device_manager import device
+import helper.device_manager as device_manager
 
 # 十分重要.
 MEANS_SCALE_FACTOR = 100000
@@ -29,6 +29,7 @@ def init_weights(layer):
 
 # 用于为WeeklyModel初始化Mlp
 def init_mlp_weights(mlp_sizes, means=None, means_scale_factor=MEANS_SCALE_FACTOR):
+    device = device_manager.device
     networks = []
     for input_size, output_size in zip(mlp_sizes[: -2], mlp_sizes[1: -1]):
         networks.append(nn.Linear(input_size, output_size))
@@ -61,7 +62,9 @@ class CNNModel(nn.Module):
         self.time_size = time_size
         self.means_scale_factor = means_scale_factor
         self.variances_scale_factor = variances_scale_factor
+        self.device = device_manager.device
 
+        device = self.device
         self.cnn = nn.Sequential(
             nn.Conv1d(1, 2, kernel_size=kernel_size, padding="same", padding_mode="reflect"),
             nn.Conv1d(2, 4, kernel_size=kernel_size, padding="same", padding_mode="reflect"),
@@ -79,6 +82,8 @@ class CNNModel(nn.Module):
         self.mlp_variances = init_mlp_weights(mlp_sizes)
 
     def forward(self, energy_xs, time_xs, time_ys):
+        device = self.device
+
         batch_size, seq_len = energy_xs.shape[0], energy_xs.shape[1]    # B, L
         predictive_seq_len = time_ys.shape[1]   # L'
         h_0 = torch.randn(self.num_directions * self.num_layers, batch_size,
@@ -104,10 +109,12 @@ class CNNModel(nn.Module):
 class CNN_Attention_Model(CNNModel):
     def __init__(self, *args, attention_size=30, **kwargs):
         super(CNN_Attention_Model, self).__init__(*args, **kwargs)
+        device = self.device
         self.attention = nn.Parameter(torch.randn(2, 1, attention_size, 1, device=device))
         self.softmax = nn.Softmax(dim=1)
 
     def forward(self, energy_xs, time_xs, time_ys):
+        device = self.device
         batch_size, seq_len = energy_xs.shape[0], energy_xs.shape[1]  # B, L
         predictive_seq_len = time_ys.shape[1]  # L'
         h_0 = torch.randn(self.num_directions * self.num_layers, batch_size,
