@@ -8,6 +8,7 @@ from torch.utils.data import DataLoader
 
 from helper import LOG_DIRECTORY
 
+CLIP = 10
 
 class Plotter:
 
@@ -24,7 +25,7 @@ class Plotter:
     def _plot(fig_name):
         def decorator(plot_function):
             def saver(self, *args, **kwargs):
-                plot_function(*args, **kwargs)
+                plot_function(self, *args, **kwargs)
 
                 if self.to_disk:
                     self._save_figure(fig_name)
@@ -59,7 +60,31 @@ class Plotter:
             axs[i].set_xlabel("Time")
             axs[i].set_ylabel("Energy Consumption")
 
-    @_plot("TrainProcess")
+    @_plot("TrainingProcess")
+    def plot_training_process(self, filename=None):
+        fig, axs = plt.subplots(2, 1, figsize=(12, 12))
+
+        train_loss = np.asarray(self.recorder.train_losses)
+        val_loss = np.asarray(self.recorder.val_losses)
+        gradient_norm = np.asarray(self.recorder.gradient_norms)
+        indexes = np.asarray(range(len(train_loss)), dtype=int)
+
+        clip = CLIP if len(indexes) > CLIP * 2 else 0
+
+        axs[0].title.set_text("Training Loss")
+        axs[0].set_xlabel("Epoch")
+        axs[0].set_ylabel("Loss")
+        axs[0].plot(indexes[clip:], train_loss[clip:], label="Loss on Training Set")
+        axs[0].plot(indexes[clip:], val_loss[clip:], label="Loss on Validation Set")
+        axs[0].legend()
+
+        axs[1].title.set_text("Training Gradient Norm")
+        axs[1].set_xlabel("Epoch")
+        axs[1].set_ylabel("Norm")
+        axs[1].plot(indexes[clip:], np.log10(gradient_norm[clip:]), label="Log of Norm to the Base 10")
+        axs[1].legend()
+
+    @_plot("SensitivityCurve")
     def plot_sensitivity_curve_weekly(self, model,
                                       dataset, tolerance_range=None):
         tolerance_range = tolerance_range if tolerance_range else (0, 2)

@@ -14,7 +14,7 @@ from helper import current_time_tag, LOG_DIRECTORY
 
 class Recorder:
 
-    def _init_(self, task_id, to_console=True, to_disk=True):
+    def __init__(self, task_id, to_console=True, to_disk=True):
         # 记录时间标记
         self.date_tag = current_time_tag()
 
@@ -82,7 +82,7 @@ class Recorder:
 class SingleTaskRecorder(Recorder):
 
     def __init__(self, task_id, to_console=True, to_disk=True):
-        super.__init__(task_id, to_console, to_disk)
+        super().__init__(task_id, to_console=to_console, to_disk=to_disk)
 
     def _model_directory_path(self):
         path = os.path.join(LOG_DIRECTORY, self.task_id, "model")

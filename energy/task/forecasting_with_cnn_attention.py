@@ -9,6 +9,7 @@ from torch.utils.data import DataLoader
 from dataset import London_11_14_random_select, construct_dataloader
 from dataset.london_clean import London_11_14_set, createDataSet, createDataSetSingleFold
 from helper.plot import plot_forecasting_random_samples_weekly, plot_training_process, plot_sensitivity_curve_weekly
+from helper.plotter import SingleTaskPlotter
 from helper.recorder import SingleTaskRecorder
 
 from model.AdvancedModel import CNN_Attention_Model
@@ -105,7 +106,7 @@ def val_loop(dataloader, model, loss_fn, recorder, tag="Val"):
     return val_loss, 1 - accuracy / (size * PERIOD * Y_LENGTH)
 
 
-def train_loop(dataloader, model, loss_fn, recorder, optimizer):
+def train_loop(dataloader, model, loss_fn, optimizer):
     size = len(dataloader.dataset)
     total_loss, gradient_norm = 0, 0
 
@@ -140,7 +141,7 @@ def train_loop(dataloader, model, loss_fn, recorder, optimizer):
 
 loss_function = customize_loss(VARIANCES_DECAY)
 
-def train_model(recorder, dataset=None, process_id=None):
+def train_model(recorder, plotter, dataset=None, process_id=None):
     global TASK_ID
     TASK_ID = "{}({})".format(TASK_ID, process_id)
 
@@ -174,7 +175,7 @@ def train_model(recorder, dataset=None, process_id=None):
     for epoch in range(EPOCH_STEP):
         print("========EPOCH {}========\n".format(epoch))
         train_loss, norm = train_loop(train, predictor, loss_function, adam)
-        validation_loss, bias = val_loop(val, predictor, loss_function)
+        validation_loss, bias = val_loop(val, predictor, loss_function, recorder)
         tolerance += 1
         if min_val_loss > validation_loss > 0:
             min_val_loss = validation_loss
@@ -183,10 +184,10 @@ def train_model(recorder, dataset=None, process_id=None):
         if tolerance > TOLERANCE:
             recorder.std_print(TASK_ID, "Early stopped at epoch {}.\n".format(epoch))
             break
-        recorder.training_record(TASK_ID, train_loss, validation_loss, gradient_norm=norm)
+        recorder.training_record(train_loss, validation_loss, gradient_norm=norm)
 
     best_model.lstm.flatten_parameters()
-    recorder.std_print(TASK_ID, "========Best Performance========\n")
+    recorder.std_print("========Best Performance========\n")
     _, train_accuracy = val_loop(train, best_model, loss_function, recorder, tag="Train")
     _, validation_accuracy = val_loop(val, best_model, loss_function, recorder, tag="Val")
     _, test_accuracy = val_loop(test, best_model, loss_function, recorder, tag="Test")
@@ -197,9 +198,9 @@ def train_model(recorder, dataset=None, process_id=None):
     # regression_display(best_model, next(iter(display_dataset)))
 
     # 需要更新新的画图模式
-    # plot_forecasting_random_samples_weekly(TASK_ID, best_model, val.dataset, LATITUDE_FACTOR, filename="Performance")
-    # plot_training_process(TASK_ID, filename="TrainProcess")
-    # plot_sensitivity_curve_weekly(TASK_ID, best_model, val.dataset, filename="SensitivityCurve")
+    plotter.plot_forecasting_random_samples_weekly(best_model, val.dataset, LATITUDE_FACTOR)
+    plotter.plot_training_process()
+    plotter.plot_sensitivity_curve_weekly(best_model, val.dataset)
 
     # print("正向Softmax:", best_model.softmax(best_model.attention[0]))
     # print("负向Softmax:", best_model.softmax(best_model.attention[1]))
@@ -224,7 +225,5 @@ def test_model_on_whole_data():
 RANDOM_SEED = 10001
 torch.cuda.manual_seed(RANDOM_SEED)
 if __name__ == "__main__":
-    # test_model()
-    # with mute_log_plot():
-    train_model(SingleTaskRecorder(TASK_ID))
-    # test_model_on_whole_data()
+    recorder = SingleTaskRecorder(TASK_ID)
+    train_model(recorder, SingleTaskPlotter(recorder))
