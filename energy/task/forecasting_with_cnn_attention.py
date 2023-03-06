@@ -106,7 +106,7 @@ def val_loop(dataloader, model, loss_fn, recorder, tag="Val"):
     return val_loss, 1 - accuracy / (size * PERIOD * Y_LENGTH)
 
 
-def train_loop(dataloader, model, loss_fn, optimizer):
+def train_loop(dataloader, model, loss_fn, optimizer, recorder):
     size = len(dataloader.dataset)
     total_loss, gradient_norm = 0, 0
 
@@ -134,7 +134,7 @@ def train_loop(dataloader, model, loss_fn, optimizer):
 
         if batch % 10 == 0:
             loss, current = loss.item(), batch * len(energy_x)
-            print(f"loss: {loss:>7f} Avg loss: {loss / (energy_x.shape[0] * PERIOD) :>7f}  [{current:>5d}/{size:>5d}]")
+            recorder.std_print(f"loss: {loss:>7f} Avg loss: {loss / (energy_x.shape[0] * PERIOD) :>7f}  [{current:>5d}/{size:>5d}]")
 
     return total_loss / (PERIOD * size), gradient_norm ** 0.5
 
@@ -154,7 +154,7 @@ def train_model(recorder, plotter, dataset=None, process_id=None):
                                      batch_size=BATCH_SIZE)
     train = DataLoader(train_set, batch_size=BATCH_SIZE, shuffle=True)
     # val = DataLoader(val_and_test_set, batch_size=BATCH_SIZE)
-    print(len(train_set), len(val_and_test_set))
+    # print(len(train_set), len(val_and_test_set))
 
     predictor = CNN_Attention_Model(input_size=PERIOD, hidden_size=HIDDEN_SIZE, num_layers=1,
                                     output_size=PERIOD, batch_size=BATCH_SIZE, period=PERIOD,
@@ -170,11 +170,9 @@ def train_model(recorder, plotter, dataset=None, process_id=None):
     best_model = None
     min_val_loss = 50000000000
     tolerance = 0
-    print('train_sum=', len(train))
-
     for epoch in range(EPOCH_STEP):
-        print("========EPOCH {}========\n".format(epoch))
-        train_loss, norm = train_loop(train, predictor, loss_function, adam)
+        recorder.std_print("========EPOCH {}========\n".format(epoch))
+        train_loss, norm = train_loop(train, predictor, loss_function, adam, recorder)
         validation_loss, bias = val_loop(val, predictor, loss_function, recorder)
         tolerance += 1
         if min_val_loss > validation_loss > 0:
@@ -225,5 +223,5 @@ def test_model_on_whole_data():
 RANDOM_SEED = 10001
 torch.cuda.manual_seed(RANDOM_SEED)
 if __name__ == "__main__":
-    recorder = SingleTaskRecorder(TASK_ID)
-    train_model(recorder, SingleTaskPlotter(recorder))
+    single_recorder = SingleTaskRecorder(TASK_ID)
+    train_model(single_recorder, SingleTaskPlotter(single_recorder))

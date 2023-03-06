@@ -24,4 +24,3 @@ else:
 def register_cuda_unit(cuda_unit):
     global device
     device = cuda_unit
-    print("set device to " + device)

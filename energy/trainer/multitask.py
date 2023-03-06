@@ -42,5 +42,8 @@ class MultiTaskTrainer:
 
 
 if __name__ == "__main__":
-    trainer = MultiTaskTrainer(["cuda:1", "cuda:2", "cuda:3", "cuda:1", "cuda:2", "cuda:3"])
+    trainer = MultiTaskTrainer(["cuda:1", "cuda:2", "cuda:3",
+                                "cuda:1", "cuda:2", "cuda:3",
+                                "cuda:1", "cuda:2", "cuda:3",
+                                "cuda:0"])
     trainer.dispatch()

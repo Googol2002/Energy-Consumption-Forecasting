@@ -30,21 +30,9 @@ class Recorder:
     def _stdout_path(self):
         raise NotImplementedError()
 
-    def _performance_path(self):
-        raise NotImplementedError()
-
     def _update_performance(self, train_accuracy, validation_accuracy,
                             test_accuracy, model_name):
-        path = self._performance_path()
-        performance = pd.DataFrame({"datetime": [self.date_tag], "train": [train_accuracy],
-                                    "validation": [validation_accuracy], "test": [test_accuracy],
-                                    "model_name": [model_name]}).astype(
-            {"datetime": "str", "train": float, "validation": float, "test": float, "model_name": str})
-
-        if os.path.exists(path):
-            performance = pd.concat([performance, pd.read_csv(path)], ignore_index=True)
-
-        performance.to_csv(path, index=False)
+        raise NotImplementedError()
 
     def std_print(self, msg):
         if self.to_console:
@@ -81,6 +69,18 @@ class Recorder:
     
 class SingleTaskRecorder(Recorder):
 
+    def _update_performance(self, train_accuracy, validation_accuracy, test_accuracy, model_name):
+        path = os.path.join(LOG_DIRECTORY, self.task_id, "performance.csv")
+        performance = pd.DataFrame({"datetime": [self.date_tag], "train": [train_accuracy],
+                                    "validation": [validation_accuracy], "test": [test_accuracy],
+                                    "model_name": [model_name]}).astype(
+            {"datetime": "str", "train": float, "validation": float, "test": float, "model_name": str})
+
+        if os.path.exists(path):
+            performance = pd.concat([performance, pd.read_csv(path)], ignore_index=True)
+
+        performance.to_csv(path, index=False)
+
     def __init__(self, task_id, to_console=True, to_disk=True):
         super().__init__(task_id, to_console=to_console, to_disk=to_disk)
 
@@ -100,9 +100,6 @@ class SingleTaskRecorder(Recorder):
             os.makedirs(folder)
 
         return path
-
-    def _performance_path(self):
-        return os.path.join(LOG_DIRECTORY, self.task_id, "performance.csv")
 
 
 class MultiTaskRecorder(Recorder):
@@ -131,9 +128,6 @@ class MultiTaskRecorder(Recorder):
             os.makedirs(folder)
 
         return path
-
-    def _performance_path(self):
-        raise NotImplementedError()
 
     """
     多任务训练暂时不支持更新表现
