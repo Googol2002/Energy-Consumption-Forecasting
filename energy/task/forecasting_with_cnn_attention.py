@@ -9,11 +9,12 @@ from torch.utils.data import DataLoader
 from dataset import London_11_14_random_select, construct_dataloader
 from dataset.london_clean import London_11_14_set, createDataSet, createDataSetSingleFold
 from helper.plot import plot_forecasting_random_samples_weekly, plot_training_process, plot_sensitivity_curve_weekly
+from helper.recorder import SingleTaskRecorder
 
 from model.AdvancedModel import CNN_Attention_Model
 from model.PeriodicalModel import customize_loss
 
-from helper.log import log_printf, performance_log, load_task_model, record_training_process
+from helper.log import load_task_model
 
 import helper.device_manager as device_manager
 
@@ -39,6 +40,7 @@ TASK_ID = "ForecastingWithCNNAttention"
 
 bias_fn = nn.L1Loss()
 
+
 def check_gradient_norm_L2(model):
     total_norm = 0
 
@@ -51,32 +53,32 @@ def check_gradient_norm_L2(model):
     return total_norm
 
 
-def regression_display(model, sample):
-    energy_x, energy_y, time_x, time_y = sample
+# def regression_display(model, sample):
+#     energy_x, energy_y, time_x, time_y = sample
+#
+#     device = device_manager.device
+#     with torch.no_grad():
+#         pred = model(energy_x.to(device, dtype=torch.float32),
+#                      time_x.to(device, dtype=torch.float32),
+#                      time_y.to(device, dtype=torch.float32)).cpu().numpy()
+#
+#     fig, axs = plt.subplots(2, 1, figsize=(12, 12))
+#
+#     means_cup, variances_cup = pred[:, :, 0].reshape(-1), pred[:, :, 1].reshape(-1)
+#     energy_x, energy_y = energy_x.reshape(-1).cpu().numpy(), energy_y.reshape(-1).cpu().numpy()
+#
+#     axs[0].plot(range(energy_y.shape[0]), energy_y)
+#     axs[0].plot(range(energy_y.shape[0]), means_cup, color="red")
+#     axs[0].fill_between(range(energy_y.shape[0]), means_cup - LATITUDE_FACTOR * np.sqrt(variances_cup),
+#                         means_cup + LATITUDE_FACTOR * np.sqrt(variances_cup), facecolor='red', alpha=0.3)
+#
+#     axs[1].plot(range(-energy_x.shape[0], energy_y.shape[0]), np.concatenate([energy_x, energy_y]))
+#     axs[1].plot(range(energy_y.shape[0]), means_cup, color="red")
+#
+#     plt.show()
 
-    device = device_manager.device
-    with torch.no_grad():
-        pred = model(energy_x.to(device, dtype=torch.float32),
-                     time_x.to(device, dtype=torch.float32),
-                     time_y.to(device, dtype=torch.float32)).cpu().numpy()
 
-    fig, axs = plt.subplots(2, 1, figsize=(12, 12))
-
-    means_cup, variances_cup = pred[:, :, 0].reshape(-1), pred[:, :, 1].reshape(-1)
-    energy_x, energy_y = energy_x.reshape(-1).cpu().numpy(), energy_y.reshape(-1).cpu().numpy()
-
-    axs[0].plot(range(energy_y.shape[0]), energy_y)
-    axs[0].plot(range(energy_y.shape[0]), means_cup, color="red")
-    axs[0].fill_between(range(energy_y.shape[0]), means_cup - LATITUDE_FACTOR * np.sqrt(variances_cup),
-                        means_cup + LATITUDE_FACTOR * np.sqrt(variances_cup), facecolor='red', alpha=0.3)
-
-    axs[1].plot(range(-energy_x.shape[0], energy_y.shape[0]), np.concatenate([energy_x, energy_y]))
-    axs[1].plot(range(energy_y.shape[0]), means_cup, color="red")
-
-    plt.show()
-
-
-def val_loop(dataloader, model, loss_fn, tag="Val"):
+def val_loop(dataloader, model, loss_fn, recorder, tag="Val"):
     size = len(dataloader.dataset)
     val_loss, accuracy, within, utilization = 0, 0, 0, 0
 
@@ -96,15 +98,14 @@ def val_loop(dataloader, model, loss_fn, tag="Val"):
             utilization += torch.sum(energy_y / (means + LATITUDE_FACTOR * torch.sqrt(variances)))
 
     val_loss /= (size * PERIOD)
-    log_printf(TASK_ID,
-               tag + " " + f"Error: \n Accuracy: {100 - (100 * accuracy / (size * PERIOD * Y_LENGTH)):>0.3f}%, Avg loss: {val_loss:>8f}")
-    log_printf(TASK_ID, f" Within the Power Generation: {(100 * within / (size * PERIOD * Y_LENGTH)):>0.3f}%")
-    log_printf(TASK_ID, f" Utilization Rate:  {(100 * utilization / (size * PERIOD * Y_LENGTH)):>0.3f}%\n")
+    recorder.std_print(tag + " " + f"Error: \n Accuracy: {100 - (100 * accuracy / (size * PERIOD * Y_LENGTH)):>0.3f}%, Avg loss: {val_loss:>8f}")
+    recorder.std_print(f" Within the Power Generation: {(100 * within / (size * PERIOD * Y_LENGTH)):>0.3f}%")
+    recorder.std_print(f" Utilization Rate:  {(100 * utilization / (size * PERIOD * Y_LENGTH)):>0.3f}%\n")
 
     return val_loss, 1 - accuracy / (size * PERIOD * Y_LENGTH)
 
 
-def train_loop(dataloader, model, loss_fn, optimizer):
+def train_loop(dataloader, model, loss_fn, recorder, optimizer):
     size = len(dataloader.dataset)
     total_loss, gradient_norm = 0, 0
 
@@ -139,7 +140,7 @@ def train_loop(dataloader, model, loss_fn, optimizer):
 
 loss_function = customize_loss(VARIANCES_DECAY)
 
-def train_model(dataset=None, process_id=None):
+def train_model(recorder, dataset=None, process_id=None):
     global TASK_ID
     TASK_ID = "{}({})".format(TASK_ID, process_id)
 
@@ -162,7 +163,7 @@ def train_model(dataset=None, process_id=None):
                                     variances_scale_factor=VARIANCES_SCALE_FACTOR,
                                     mlp_sizes=[HIDDEN_SIZE * 2 + TIME_SIZE, HIDDEN_SIZE, 128, 128, 64, PERIOD])
 
-    log_printf(TASK_ID, TASK_ID + ' model:' + "\n" + str(predictor))
+    recorder.std_print(TASK_ID + ' model:' + "\n" + str(predictor))
     adam = torch.optim.Adam(predictor.parameters(), lr=LEARNING_RATE, weight_decay=WEIGHT_DECAY)
 
     best_model = None
@@ -180,23 +181,25 @@ def train_model(dataset=None, process_id=None):
             best_model = copy.deepcopy(predictor)
             tolerance = 0
         if tolerance > TOLERANCE:
-            log_printf(TASK_ID, "Early stopped at epoch {}.\n".format(epoch))
+            recorder.std_print(TASK_ID, "Early stopped at epoch {}.\n".format(epoch))
             break
-        record_training_process(TASK_ID, train_loss, validation_loss, gradient_norm=norm)
+        recorder.training_record(TASK_ID, train_loss, validation_loss, gradient_norm=norm)
 
     best_model.lstm.flatten_parameters()
-    log_printf(TASK_ID, "========Best Performance========\n")
-    _, train_accuracy = val_loop(train, best_model, loss_function, tag="Train")
-    _, validation_accuracy = val_loop(val, best_model, loss_function, tag="Val")
-    _, test_accuracy = val_loop(test, best_model, loss_function, tag="Test")
-    performance_log(TASK_ID, model=best_model, train_accuracy=train_accuracy,
-                    validation_accuracy=validation_accuracy, test_accuracy=test_accuracy)
+    recorder.std_print(TASK_ID, "========Best Performance========\n")
+    _, train_accuracy = val_loop(train, best_model, loss_function, recorder, tag="Train")
+    _, validation_accuracy = val_loop(val, best_model, loss_function, recorder, tag="Val")
+    _, test_accuracy = val_loop(test, best_model, loss_function, recorder, tag="Test")
+    recorder.epoch_record(model=best_model, train_accuracy=train_accuracy,
+                          validation_accuracy=validation_accuracy, test_accuracy=test_accuracy)
     # 画图测试
     # display_dataset = DataLoader(val.dataset, batch_size=1, shuffle=True)
     # regression_display(best_model, next(iter(display_dataset)))
-    plot_forecasting_random_samples_weekly(TASK_ID, best_model, val.dataset, LATITUDE_FACTOR, filename="Performance")
-    plot_training_process(TASK_ID, filename="TrainProcess")
-    plot_sensitivity_curve_weekly(TASK_ID, best_model, val.dataset, filename="SensitivityCurve")
+
+    # 需要更新新的画图模式
+    # plot_forecasting_random_samples_weekly(TASK_ID, best_model, val.dataset, LATITUDE_FACTOR, filename="Performance")
+    # plot_training_process(TASK_ID, filename="TrainProcess")
+    # plot_sensitivity_curve_weekly(TASK_ID, best_model, val.dataset, filename="SensitivityCurve")
 
     # print("正向Softmax:", best_model.softmax(best_model.attention[0]))
     # print("负向Softmax:", best_model.softmax(best_model.attention[1]))
@@ -223,5 +226,5 @@ torch.cuda.manual_seed(RANDOM_SEED)
 if __name__ == "__main__":
     # test_model()
     # with mute_log_plot():
-    train_model()
+    train_model(SingleTaskRecorder(TASK_ID))
     # test_model_on_whole_data()
