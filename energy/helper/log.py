@@ -1,23 +1,14 @@
 import contextlib
-from datetime import datetime, timedelta, timezone
+from datetime import datetime
 
 import pandas as pd
 import torch
 import os
 import re
 
-from helper import LOG_DIRECTORY, is_muted, training_recoder, TrainingProcess
+from helper import LOG_DIRECTORY, is_muted, training_recoder, TrainingProcess, current_time_tag
 
-# 获取当前上海时间
-SHA_TZ = timezone(
-    timedelta(hours=8),
-    name='Asia/Shanghai',
-)
-utc_time = datetime.utcnow().replace(tzinfo=timezone.utc)
-shanghai_time = utc_time.astimezone(SHA_TZ)
-# 转换为其他日期格式，如："%Y-%m-%d %H:%M:%S"
-date_tag = shanghai_time.strftime("%Y-%m-%d %H-%M-%S")
-
+date_tag = current_time_tag()
 
 def _model_directory_path(task_id):
     path = os.path.join(LOG_DIRECTORY, task_id, "model")

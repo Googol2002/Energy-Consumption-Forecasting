@@ -11,7 +11,7 @@ from dataset.london_clean import London_11_14_set, createDataSet, createDataSetS
 from helper.plot import plot_forecasting_random_samples_weekly, plot_training_process, plot_sensitivity_curve_weekly
 
 from model.AdvancedModel import CNN_Attention_Model
-from model.PeriodicalModel import WeeklyModel, customize_loss
+from model.PeriodicalModel import customize_loss
 
 from helper.log import log_printf, performance_log, load_task_model, record_training_process
 

@@ -116,7 +116,6 @@ def plot_forecasting_random_samples_weekly(task_id, model, dataset, factor, size
     _save_fig(task_id, filename)
     plt.show()
 
-
 def plot_forecasting_weekly_for_comparison(task_id, model, dataset, factor, index):
     def _plot(last_week: bool, mean_curve: bool, confidence_curve: bool, transform,
               yticks=None, percentage=True, filename=None):
