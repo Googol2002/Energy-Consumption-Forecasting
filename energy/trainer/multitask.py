@@ -34,6 +34,10 @@ class MultiTaskTrainer:
         self.results= []
 
     def dispatch(self, out_file=None):
+        """
+        :parameter out_file: 训练结果json的输出文件位置
+        :return 返回训练结果json
+        """
         mp.set_start_method("spawn")
         tasks = []
         with mp.Pool(processes=len(self.cuda_list)) as pool:
