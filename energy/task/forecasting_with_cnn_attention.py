@@ -8,7 +8,6 @@ from torch.utils.data import DataLoader
 
 from dataset import London_11_14_random_select, construct_dataloader
 from dataset.london_clean import London_11_14_set, createDataSet, createDataSetSingleFold
-from helper.plot import plot_forecasting_random_samples_weekly, plot_training_process, plot_sensitivity_curve_weekly
 from helper.plotter import SingleTaskPlotter
 from helper.recorder import SingleTaskRecorder
 
@@ -28,7 +27,7 @@ PERIOD = 48
 TIME_SIZE = 7 + 12
 X_LENGTH = 30
 Y_LENGTH = 7
-EPOCH_STEP = 5
+EPOCH_STEP = 2
 TOLERANCE = 40
 LATITUDE_FACTOR = 1
 LEARNING_RATE = 2e-3
@@ -99,7 +98,8 @@ def val_loop(dataloader, model, loss_fn, recorder, tag="Val"):
             utilization += torch.sum(energy_y / (means + LATITUDE_FACTOR * torch.sqrt(variances)))
 
     val_loss /= (size * PERIOD)
-    recorder.std_print(tag + " " + f"Error: \n Accuracy: {100 - (100 * accuracy / (size * PERIOD * Y_LENGTH)):>0.3f}%, Avg loss: {val_loss:>8f}")
+    recorder.std_print(tag + " " + f"Error: \n Accuracy: {100 - (100 * accuracy / (size * PERIOD * Y_LENGTH)):>0.3f}%,"
+                                   f" Avg loss: {val_loss:>8f}")
     recorder.std_print(f" Within the Power Generation: {(100 * within / (size * PERIOD * Y_LENGTH)):>0.3f}%")
     recorder.std_print(f" Utilization Rate:  {(100 * utilization / (size * PERIOD * Y_LENGTH)):>0.3f}%\n")
 
@@ -153,8 +153,6 @@ def train_model(recorder, plotter, dataset=None, process_id=None):
                                      validation_ratio=0.5, test_ratio=0,
                                      batch_size=BATCH_SIZE)
     train = DataLoader(train_set, batch_size=BATCH_SIZE, shuffle=True)
-    # val = DataLoader(val_and_test_set, batch_size=BATCH_SIZE)
-    # print(len(train_set), len(val_and_test_set))
 
     predictor = CNN_Attention_Model(input_size=PERIOD, hidden_size=HIDDEN_SIZE, num_layers=1,
                                     output_size=PERIOD, batch_size=BATCH_SIZE, period=PERIOD,
@@ -180,17 +178,23 @@ def train_model(recorder, plotter, dataset=None, process_id=None):
             best_model = copy.deepcopy(predictor)
             tolerance = 0
         if tolerance > TOLERANCE:
-            recorder.std_print(TASK_ID, "Early stopped at epoch {}.\n".format(epoch))
+            if process_id is None:
+                recorder.std_print(TASK_ID, "Early stopped at epoch {}.\n".format(epoch))
+            else:
+                recorder.std_print("Process({}): Early stopped at {:>3d}/{:>3d}".format(process_id, epoch, EPOCH_STEP), level=1)
             break
         recorder.training_record(train_loss, validation_loss, gradient_norm=norm)
+
+        if process_id is not None and epoch % 5 == 0:
+            recorder.std_print("Process({}):{:>3d}/{:>3d}".format(process_id, epoch, EPOCH_STEP), level=1)
 
     best_model.lstm.flatten_parameters()
     recorder.std_print("========Best Performance========\n")
     _, train_accuracy = val_loop(train, best_model, loss_function, recorder, tag="Train")
     _, validation_accuracy = val_loop(val, best_model, loss_function, recorder, tag="Val")
     _, test_accuracy = val_loop(test, best_model, loss_function, recorder, tag="Test")
-    recorder.epoch_record(model=best_model, train_accuracy=train_accuracy,
-                          validation_accuracy=validation_accuracy, test_accuracy=test_accuracy)
+    recorder.summary_record(model=best_model, train_accuracy=train_accuracy,
+                            validation_accuracy=validation_accuracy, test_accuracy=test_accuracy)
     # 画图测试
     # display_dataset = DataLoader(val.dataset, batch_size=1, shuffle=True)
     # regression_display(best_model, next(iter(display_dataset)))
