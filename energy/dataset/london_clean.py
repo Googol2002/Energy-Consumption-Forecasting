@@ -147,6 +147,10 @@ class London_11_14_random_select(Dataset):
     """
 
     def __init__(self, train_l=Train_length, test_l=Test_length, size=SIZE, window=WINDOW):
+        self.train_l = train_l
+        self.test_l = test_l
+        self.size = size
+        self.window = window
 
         # 添加周&月独热编码
         def get_one_hot(index, size):
@@ -162,12 +166,25 @@ class London_11_14_random_select(Dataset):
         def add_one_hot_week(df):
             week = list(df[df.columns[0]])
             Week = []
-            for i in week:
-                a = int(i[0:4])
-                b = int(i[5:7])
-                c = int(i[8:10])
-                week_num = datetime.date(a, b, c).isoweekday()
-                Week.append(get_one_hot(week_num, 7))
+            if self.window >= 48:
+                for i in week:
+                    a = int(i[0:4])
+                    b = int(i[5:7])
+                    c = int(i[8:10])
+                    week_num = datetime.date(a, b, c).isoweekday()
+                    Week.append(get_one_hot(week_num, 7))
+            elif self.window == 24:
+                for i in week:
+                    a = int(i[0:4])
+                    b = int(i[5:7])
+                    c = int(i[8:10])
+                    d = int(i[11:13])
+                    week_num = datetime.date(a, b, c).isoweekday()
+                    week_num = 2 * week_num + int(d / 12) - 1
+                    Week.append(get_one_hot(week_num, 14))
+
+            else:
+                print("unsupported window!")
             df['Week'] = Week
 
         def add_one_hot_month(df):
@@ -178,10 +195,6 @@ class London_11_14_random_select(Dataset):
                 Month.append(get_one_hot(j, 12))
             df['Month'] = Month
 
-        self.train_l = train_l
-        self.test_l = test_l
-        self.size = size
-        self.window = window
         df_data = pd.DataFrame(np.load('dataset/london_data.npy'))
         df_date = pd.read_csv('dataset/london_date.csv', header=0, decimal=",", na_filter=False)
         self.df = pd.merge(df_date, df_data, how='outer', right_index=True, left_index=True)
@@ -199,33 +212,55 @@ class London_11_14_random_select(Dataset):
         add_one_hot_month(self.df)  # 添加月独热编码
         self.data_only = self.df[self.df.columns[1]]
         self.dataset = (np.array(self.data_only.values.tolist()))  # 只保留用电量数据
+        # self.dataset_mean=np.mean(self.dataset.reshape(-1,48), axis=1)
+        # self.dataset_all_mean=np.mean(self.dataset_mean)
+        # self.dataset_all_var=np.var(self.dataset)
+        # self.dataset_all_std = np.std(self.dataset)
         self.data_week = (np.array(self.df[self.df.columns[2]].values.tolist()))
         self.data_month = (np.array(self.df[self.df.columns[3]].values.tolist()))
-        self.days = int(self.data_only.shape[0] / self.window)
+        self.days = int(self.data_only.shape[0] / 48)
         self.counts = self.days - test_l - train_l + 1  # (X,y)总行数
+
+        # 输出
+        # outputpath='../../dataset/example.csv'
+        # df_merge.to_csv(outputpath,sep=',',index=False)
 
     def __len__(self):
         return self.counts
 
     def __getitem__(self, index):
         assert (index < self.__len__())
-        row_offset = index * self.window
-        x, y = self.dataset[row_offset: row_offset + self.train_l * self.window], \
-            self.dataset[
-            row_offset + self.train_l * self.window: row_offset + (self.train_l + self.test_l) * self.window]
-        x = x.reshape(self.train_l, self.window)
-        y = y.reshape(self.test_l, self.window)
-        x_1 = np.append(self.data_week[row_offset: row_offset + self.train_l * self.window:self.window],
-                        self.data_month[row_offset: row_offset + self.train_l * self.window:self.window], axis=1)
+        row_offset = index * 48
+        x, y = self.dataset[row_offset: row_offset + self.train_l * 48], \
+            self.dataset[row_offset + self.train_l * 48: row_offset + (self.train_l + self.test_l) * 48]
+        assert (x / self.window - int(x / self.window) == 0)  # 不整除
+        assert (y / self.window - int(y / self.window) == 0)  # 不整除
+        x = x.reshape(-1, self.window)
+        y = y.reshape(-1, self.window)
+        if self.window >= 48:
+            x_1 = np.append(self.data_week[row_offset: row_offset + self.train_l * 48:48],
+                            self.data_month[row_offset: row_offset + self.train_l * 48:48], axis=1)
 
-        y_1 = np.append(
-            self.data_week[row_offset + self.train_l * self.window: row_offset + (
-                        self.train_l + self.test_l) * self.window:self.window],
-            self.data_month[row_offset + self.train_l * self.window: row_offset + (
-                        self.train_l + self.test_l) * self.window:self.window], axis=1)
+            y_1 = np.append(
+                self.data_week[row_offset + self.train_l * 48: row_offset + (self.train_l + self.test_l) * 48:48],
+                self.data_month[row_offset + self.train_l * 48: row_offset + (self.train_l + self.test_l) * 48:48],
+                axis=1)
 
-        x_1 = x_1.reshape(self.train_l, 19)
-        y_1 = y_1.reshape(self.test_l, 19)
+            x_1 = x_1.reshape(self.train_l, 19)
+            y_1 = y_1.reshape(self.test_l, 19)
+        elif self.window == 24:
+            x_1 = np.append(self.data_week[row_offset: row_offset + self.train_l * 48:24],
+                            self.data_month[row_offset: row_offset + self.train_l * 48:24], axis=1)
+
+            y_1 = np.append(
+                self.data_week[row_offset + self.train_l * 48: row_offset + (self.train_l + self.test_l) * 48:24],
+                self.data_month[row_offset + self.train_l * 48: row_offset + (self.train_l + self.test_l) * 48:24],
+                axis=1)
+
+            x_1 = x_1.reshape(self.train_l, 26)
+            y_1 = y_1.reshape(self.test_l, 26)
+        else:
+            print("unsupported window!")
         return x, y, x_1, y_1
 
     def __add__(self, other):
@@ -237,12 +272,13 @@ class London_11_14_random_select(Dataset):
         """
         # assert (skipdays < self.counts)
         # a = np.delete(self.dataset, np.s_[:skipdays*48], axis=0)
-        offset = self.dataset.shape[0] % (self.window * lens)
+        offset = self.dataset.shape[0] % (48 * lens)
+        # print('unused days for e and v:',int(offset/48),'days')
         if offset != 0:
             a = np.delete(self.dataset, np.s_[-offset:], axis=0)
-            c = a.reshape(-1, self.window * lens)
+            c = a.reshape(-1, 48 * lens)
         else:
-            c = self.dataset.reshape(-1, self.window * lens)
+            c = self.dataset.reshape(-1, 48 * lens)
         # expectations =tf.reduce_mean(,axis=0)
         expectations = np.mean(c, axis=0)
         # variances = tf.reduce_mean(tf.cast(a, tf.float32), axis=0)
@@ -339,8 +375,7 @@ class London_11_14_set_test(Dataset):
         self.test_days = test_days * (label_l + self.test_continuous - 1)  # test实际占据天数
         self.size = size
         self.times = times
-        self.days = int(378 * 48 / window) - self.train_l - self.label_l
-        print("days:", self.days)
+        self.days = 378 - self.train_l - self.label_l
         self.train_days = self.days - self.test_days
         self.k_flod_test_list = k_flod_test_list if k_flod_test_list else []  # 已随机划分好的基准k折测试集
         self.test_list = (np.array(self.k_flod_test_list) + self.flod * self.test_continuous).tolist()
@@ -398,12 +433,10 @@ def createDataSet(k_flod=10, train_l=Train_length, label_l=Test_length, test_day
         :param times: 训练集和测试集的重复抽样次数
         :param size: 随机抽取的用户数量，上限5068
         :param ev_key: 期望和方差的统计意义，=1代表一天48列，=7代表一周48*7列
-        :param window: 以多少个数据点为基本单元整体当作”1天“
     """
     k_flod_test_list = (np.array(sorted(
         random.sample(
-            list(range(test_continuous, int(378 * 48 / window) - train_l - label_l - k_flod * test_continuous + 1,
-                       test_continuous)),
+            list(range(test_continuous, 378 - train_l - label_l - k_flod * test_continuous + 1, test_continuous)),
             test_days)
     ))).tolist()  # 已随机划分好的基准k折测试集
     print("k_flod_test_list:", k_flod_test_list)
@@ -418,8 +451,8 @@ def createDataSet(k_flod=10, train_l=Train_length, label_l=Test_length, test_day
         set1 = London_11_14_set(train_l=train_l, label_l=label_l, test_days=test_days, test_continuous=test_continuous,
                                 size=size, times=times, test_list=set2.get_test_list(), data_list=set2.get_data_list(),
                                 ev_key=ev_key)
-        print("train_l=", train_l, "label_l=", label_l, "test_days=", test_days, "test_continuous=", test_continuous,
-              'size=', size, 'times=', times, "ev_key=", ev_key, "window=", window)
+        # print("train_l=", train_l, "label_l=", label_l, "test_days=", test_days, "test_continuous=", test_continuous,
+        #       'size=', size, 'times=', times, "ev_key=", ev_key)
         e, v = set1.statistics()
         set2_flod.append(set2)
         set1_flod.append(set1)
@@ -427,7 +460,7 @@ def createDataSet(k_flod=10, train_l=Train_length, label_l=Test_length, test_day
         v_flod.append(v)
         output_data = [set1, set2, e, v]
         torch.save(output_data, "./dataset/10_flod_split/10_flod_split_0" + str(flod) + ".pt")
-    print("train_lens:", len(set1_flod[0]), "test_lens:", len(set2_flod[0]))
+
     return set1_flod, set2_flod, e_flod, v_flod
 
 
@@ -438,10 +471,10 @@ def createDataSetSingleFold(**kwargs):
 
 if __name__ == '__main__':
     createDataSet(k_flod=10, train_l=Train_length, label_l=Test_length, test_days=10,
-                  test_continuous=3, size=SIZE, times=TIMES, ev_key=1, window=96)
-    y = torch.load("dataset/10_flod_split/10_flod_split_00.pt")
-    train_set = y[0]
-    test_set = y[1]
-    e = y[2]
-    v = y[3]
-    print(len(train_set), train_set[0])
+                  test_continuous=3, size=SIZE, times=TIMES, ev_key=1, window=24)
+    # y=torch.load("dataset/10_flod_split/10_flod_split_00.pt")
+    # train_set=y[0]
+    # test_set=y[1]
+    # e=y[2]
+    # v=y[3]
+    # print(len(train_set),train_set[0])
