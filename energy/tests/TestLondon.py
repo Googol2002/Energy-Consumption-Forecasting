@@ -7,19 +7,20 @@
 import numpy as np
 # import matplotlib
 # import matplotlib.pyplot as plt
-
 # matplotlib.use('TkAgg')
+
+
 import time
 import pandas as pd
 
-from energy.dataset.london_clean import London_11_14, London_11_14_random_select
+from energy.dataset.london_clean import  London_11_14_random_select#London_11_14,
 from energy.dataset.london_clean import London_11_14_set_test, London_11_14_set, createDataSet
 
 
-def test_London_11_14():
-    dataset = London_11_14(train_l=5, test_l=1, size=1000)
-    df = London_11_14(train_l=5, test_l=1, size=200).before_sum
-    print(df)
+# def test_London_11_14():
+#     dataset = London_11_14(train_l=5, test_l=1, size=1000)
+#     df = London_11_14(train_l=5, test_l=1, size=200).before_sum
+#     print(df)
 
 
 def test_London_11_14_random_select():
@@ -67,12 +68,12 @@ def test_createDataSet():
     :param ev_key: 期望和方差的统计长度，=1代表一天48列，=7代表一周48*7列
     测试集个数=label_l*test_days*test_continuous
     """
-    set1, set2, expectations, variances = createDataSet(flod=19, train_l=10, label_l=7, test_days=10, test_continuous=3,
-                                                        size=3000, times=1, ev_key=1)
-    print("expectations_mean:", expectations.mean())
-    print("variances_mean:", variances.mean())
-    # print(set2[0])
-    print("train_lens:", len(set1), "test_lens:", len(set2))
+    set1_flod, set2_flod, e_flod, v_flod=createDataSet(k_flod=1, train_l=10, label_l=7, test_days=10,
+                  test_continuous=3, size=10, times=10, ev_key=1, window=48)
+    # print("expectations_mean:", expectations.mean())
+    # print("variances_mean:", variances.mean())
+    # # print(set2[0])
+    print("train_lens:", len(set1_flod[0]), "test_lens:", len(set2_flod[0]))
     # print(set1[1])
 
 
@@ -103,23 +104,23 @@ def direct_predict(ev_key=1, epoch=10):
 
     print("Accuracy: ", accuracy, " \nMean:", np.mean(accuracy), " using ", ev_key, " days of expectations")
 
+if __name__ == '__main__':
+    test_createDataSet()
+    # direct_predict(ev_key=1, epoch=10)
 
-test_createDataSet()
-# direct_predict(ev_key=1, epoch=10)
-
-# #dataset绘图
-# START = 0
-# END = dataset.days - 1
-# dataset_axis = np.arange(dataset.dataset.shape[0])
-# plt.plot(dataset_axis[48 * START:48 * END], dataset.dataset[48 * START:48 * END], c='blue', label='X')
-# # 均值绘图
-# plt.plot(dataset_axis[48 * START:48 * END:48], dataset.dataset_mean[START:END], c='green', label='X_mean')
-# # 非0分布绘图
-# data = np.load('dataset/london_data.npy')
-# data = data.astype(bool).astype(int)
-# data_distribute = np.sum(data, axis=1)
-# plt.plot(dataset_axis, data_distribute, c='red', label='counts')
-# plt.legend()
-# # plt.grid(True) # 显示网格线
-# # plt.savefig("ARIMA.png")
-# plt.show()
+    # #dataset绘图
+    # START = 0
+    # END = dataset.days - 1
+    # dataset_axis = np.arange(dataset.dataset.shape[0])
+    # plt.plot(dataset_axis[48 * START:48 * END], dataset.dataset[48 * START:48 * END], c='blue', label='X')
+    # # 均值绘图
+    # plt.plot(dataset_axis[48 * START:48 * END:48], dataset.dataset_mean[START:END], c='green', label='X_mean')
+    # # 非0分布绘图
+    # data = np.load('dataset/london_data.npy')
+    # data = data.astype(bool).astype(int)
+    # data_distribute = np.sum(data, axis=1)
+    # plt.plot(dataset_axis, data_distribute, c='red', label='counts')
+    # plt.legend()
+    # # plt.grid(True) # 显示网格线
+    # # plt.savefig("ARIMA.png")
+    # plt.show()
