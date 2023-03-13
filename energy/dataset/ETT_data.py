@@ -22,16 +22,15 @@ class Dataset_ETT_hour(Dataset):
                  features='S', data_path='ETTh1.csv',
                  target='OT', scale=True, inverse=False, timeenc=0, freq='h', window=WINDOW):
         """
-        :param root_path:不用管
-        :param flag: 可选train，val，test
+        :param flag: ['train','val','test']
         :param size:  [seq_len,  pred_len]
-        :param features:不用管
+        :param features:控制目标列
         :param data_path: ['ETTh1.csv','ETTh2.csv','ETTm1.csv','ETTm1.csv']
-        :param target:不用管
+        :param target:控制目标列
         :param scale:归一化，默认True
         :param inverse:不用管
-        :param timeenc:不用管
-        :param freq:不用管
+        :param timeenc:0
+        :param freq:暂用h
         """
 
         # info
@@ -119,9 +118,9 @@ class Dataset_ETT_hour(Dataset):
 
 
 if __name__ == '__main__':
-    Data = Dataset_ETT_hour(root_path='dataset\ETT-small', timeenc=0, scale=True, inverse=False,
-                            features='S', target='OT', freq='h',  # 这三个参数控制分析哪列/哪些列数据
-                            flag='train', data_path='ETTh1.csv', size=[24 * 4 * 4, 0, 24 * 4])
+    Data = Dataset_ETT_hour(root_path='dataset\ETT-small', timeenc=0, scale=True, inverse=False,#固定参数
+                            features='S', target='OT', freq='h',  # 这三个参数控制分析哪列/哪些列数据，暂定最后一列'OT'
+                            flag='train', data_path='ETTh1.csv', size=[24 * 4 * 4, 0, 24 * 4],window=24)#可能需要变的
     seq_x, seq_y, seq_x_mark, seq_y_mark = Data[4000]
     print(seq_x, seq_x.shape)
     print(seq_y, seq_y.shape)
