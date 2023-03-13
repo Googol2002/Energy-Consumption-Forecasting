@@ -233,17 +233,19 @@ class London_11_14_random_select(Dataset):
         row_offset = index * 48
         x, y = self.dataset[row_offset: row_offset + self.train_l * 48], \
             self.dataset[row_offset + self.train_l * 48: row_offset + (self.train_l + self.test_l) * 48]
-        assert (x / self.window - int(x / self.window) == 0)  # 不整除
-        assert (y / self.window - int(y / self.window) == 0)  # 不整除
+        assert (len(x) / self.window - int(len(x) / self.window) == 0)  # 不整除
+        assert (len(y) / self.window - int(len(y) / self.window) == 0)  # 不整除
         x = x.reshape(-1, self.window)
         y = y.reshape(-1, self.window)
         if self.window >= 48:
-            x_1 = np.append(self.data_week[row_offset: row_offset + self.train_l * 48:48],
-                            self.data_month[row_offset: row_offset + self.train_l * 48:48], axis=1)
+            x_1 = np.append(self.data_week[row_offset: row_offset + self.train_l * 48:self.window],
+                            self.data_month[row_offset: row_offset + self.train_l * 48:self.window], axis=1)
 
             y_1 = np.append(
-                self.data_week[row_offset + self.train_l * 48: row_offset + (self.train_l + self.test_l) * 48:48],
-                self.data_month[row_offset + self.train_l * 48: row_offset + (self.train_l + self.test_l) * 48:48],
+                self.data_week[
+                row_offset + self.train_l * 48: row_offset + (self.train_l + self.test_l) * 48:self.window],
+                self.data_month[
+                row_offset + self.train_l * 48: row_offset + (self.train_l + self.test_l) * 48:self.window],
                 axis=1)
 
             x_1 = x_1.reshape(self.train_l, 19)
@@ -257,8 +259,8 @@ class London_11_14_random_select(Dataset):
                 self.data_month[row_offset + self.train_l * 48: row_offset + (self.train_l + self.test_l) * 48:24],
                 axis=1)
 
-            x_1 = x_1.reshape(self.train_l, 26)
-            y_1 = y_1.reshape(self.test_l, 26)
+            x_1 = x_1.reshape(self.train_l * 2, 26)
+            y_1 = y_1.reshape(self.test_l * 2, 26)
         else:
             print("unsupported window!")
         return x, y, x_1, y_1
@@ -459,7 +461,9 @@ def createDataSet(k_flod=10, train_l=Train_length, label_l=Test_length, test_day
         e_flod.append(e)
         v_flod.append(v)
         output_data = [set1, set2, e, v]
-        torch.save(output_data, "./dataset/10_flod_split/10_flod_split_0" + str(flod) + ".pt")
+        if not os.path.exists("dataset/10_flod_split_" + str(int(window / 2)) + "h"):
+            os.makedirs("dataset/10_flod_split_" + str(int(window / 2)) + "h")
+        torch.save(output_data, "dataset/10_flod_split_" + str(int(window / 2)) + "h/split_0" + str(flod) + ".pt")
 
     return set1_flod, set2_flod, e_flod, v_flod
 
@@ -471,7 +475,7 @@ def createDataSetSingleFold(**kwargs):
 
 if __name__ == '__main__':
     createDataSet(k_flod=10, train_l=Train_length, label_l=Test_length, test_days=10,
-                  test_continuous=3, size=SIZE, times=TIMES, ev_key=1, window=24)
+                  test_continuous=3, size=SIZE, times=TIMES, ev_key=1, window=48)
     # y=torch.load("dataset/10_flod_split/10_flod_split_00.pt")
     # train_set=y[0]
     # test_set=y[1]
