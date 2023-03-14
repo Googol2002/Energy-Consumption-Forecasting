@@ -9,7 +9,7 @@ import numpy as np
 import pandas as pd
 import torch
 from torch.utils.data import Dataset, DataLoader
-from helper.data_tools import StandardScaler, time_features
+from helper.data_tools import StandardScaler, time_features, get_one_hot, get_one_hot_feature
 import warnings
 
 warnings.filterwarnings('ignore')
@@ -84,12 +84,20 @@ class Dataset_ETT_hour(Dataset):
         df_stamp = df_raw[['date']][border1:border2]
         df_stamp['date'] = pd.to_datetime(df_stamp.date)
         self.data_stamp = time_features(df_stamp, timeenc=self.timeenc, freq=self.freq)
+        self.data_one_hot = get_one_hot_feature(self.data_stamp, freq=self.freq)
         self.data_x = data[border1:border2]
         # if self.inverse:
         #     self.data_y = df_data.values[border1:border2]
         # else:
         #     self.data_y = data[border1:border2]
         self.data_y = data[border1:border2]
+
+    def __append_array__(self, array):
+        a = []
+        for i in array:
+            a.append(np.append(i[0], i[1]))
+        a = np.array(a)
+        return a
 
     def __getitem__(self, index):
         s_begin = index
@@ -105,8 +113,12 @@ class Dataset_ETT_hour(Dataset):
         # else:
         #     seq_y = self.data_y[r_begin:r_end]
         seq_y = self.data_y[r_begin:r_end].reshape(-1, self.window)
-        seq_x_mark = self.data_stamp[s_begin:s_end].reshape(-1, self.window, 4)
-        seq_y_mark = self.data_stamp[r_begin:r_end].reshape(-1, self.window, 4)
+        # seq_x_mark = self.data_stamp[s_begin:s_end].reshape(-1, self.window, 4)
+        # seq_y_mark = self.data_stamp[r_begin:r_end].reshape(-1, self.window, 4)
+        seq_x_mark = self.data_one_hot[s_begin:s_end:self.window].reshape(-1, 2)
+        seq_y_mark = self.data_one_hot[r_begin:r_end:self.window].reshape(-1, 2)
+        seq_y_mark = self.__append_array__(seq_y_mark)
+        seq_x_mark = self.__append_array__(seq_x_mark)
 
         return seq_x, seq_y, seq_x_mark, seq_y_mark
 
@@ -118,9 +130,9 @@ class Dataset_ETT_hour(Dataset):
 
 
 if __name__ == '__main__':
-    Data = Dataset_ETT_hour(root_path='dataset\ETT-small', timeenc=0, scale=True, inverse=False,#固定参数
+    Data = Dataset_ETT_hour(root_path='dataset\ETT-small', timeenc=0, scale=True, inverse=False,  # 固定参数
                             features='S', target='OT', freq='h',  # 这三个参数控制分析哪列/哪些列数据，暂定最后一列'OT'
-                            flag='train', data_path='ETTh1.csv', size=[24 * 4 * 4, 0, 24 * 4],window=24)#可能需要变的
+                            flag='train', data_path='ETTh2.csv', size=[24 * 4 * 4, 0, 24 * 4], window=24)  # 可能需要变的
     seq_x, seq_y, seq_x_mark, seq_y_mark = Data[4000]
     print(seq_x, seq_x.shape)
     print(seq_y, seq_y.shape)
