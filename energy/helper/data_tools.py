@@ -78,7 +78,7 @@ def get_one_hot(index, size):
     index:编码值
     size:编码长度
     '''
-    one_hot = np.zeros([size], dtype=int)  # [0 for _ in range(1, size + 1)]
+    one_hot = [0 for _ in range(1, size + 1)]  #np.zeros([size], dtype=int)#
     one_hot[index - 1] = 1
     return one_hot
 
@@ -88,6 +88,8 @@ def get_one_hot_feature(data_stamp, freq):
         data_one_hot = np.hstack((data_stamp[:, :1], data_stamp[:, 2:3] + 1))
         func_ = np.frompyfunc(get_one_hot, 2, 1)
         data_one_hot = func_(data_one_hot, [12, 7])
+        data_one_hot=data_one_hot[:,0]+data_one_hot[:,1]
+        data_one_hot=np.array(data_one_hot.tolist())
         return data_one_hot
     else:
         print("unsupported freq!")

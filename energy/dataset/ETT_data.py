@@ -92,12 +92,6 @@ class Dataset_ETT_hour(Dataset):
         #     self.data_y = data[border1:border2]
         self.data_y = data[border1:border2]
 
-    def __append_array__(self, array):
-        a = []
-        for i in array:
-            a.append(np.append(i[0], i[1]))
-        a = np.array(a)
-        return a
 
     def __getitem__(self, index):
         s_begin = index
@@ -115,10 +109,9 @@ class Dataset_ETT_hour(Dataset):
         seq_y = self.data_y[r_begin:r_end].reshape(-1, self.window)
         # seq_x_mark = self.data_stamp[s_begin:s_end].reshape(-1, self.window, 4)
         # seq_y_mark = self.data_stamp[r_begin:r_end].reshape(-1, self.window, 4)
-        seq_x_mark = self.data_one_hot[s_begin:s_end:self.window].reshape(-1, 2)
-        seq_y_mark = self.data_one_hot[r_begin:r_end:self.window].reshape(-1, 2)
-        seq_y_mark = self.__append_array__(seq_y_mark)
-        seq_x_mark = self.__append_array__(seq_x_mark)
+        seq_x_mark = self.data_one_hot[s_begin:s_end:self.window].reshape(-1, 19)
+        seq_y_mark = self.data_one_hot[r_begin:r_end:self.window].reshape(-1, 19)
+
 
         return seq_x, seq_y, seq_x_mark, seq_y_mark
 
