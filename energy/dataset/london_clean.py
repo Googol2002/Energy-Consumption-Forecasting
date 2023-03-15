@@ -380,7 +380,8 @@ class London_11_14_set_test(Dataset):
         self.days = 378 - self.train_l - self.label_l
         self.train_days = self.days - self.test_days
         self.k_flod_test_list = k_flod_test_list if k_flod_test_list else []  # 已随机划分好的基准k折测试集
-        self.test_list = (np.array(self.k_flod_test_list) + self.flod * self.test_continuous).tolist()
+        # self.test_list = (np.array(self.k_flod_test_list) + self.flod * self.test_continuous).tolist()
+        self.test_list = self.k_flod_test_list[self.test_groups * self.flod:self.test_groups * (1 + self.flod)]
         assert (self.test_list[-1] <= self.days)  # 防止溢出
         print("test_list:", self.test_list)
         self.data_test = []
@@ -436,12 +437,17 @@ def createDataSet(k_flod=10, train_l=Train_length, label_l=Test_length, test_day
         :param size: 随机抽取的用户数量，上限5068
         :param ev_key: 期望和方差的统计意义，=1代表一天48列，=7代表一周48*7列
     """
-    k_flod_test_list = (np.array(sorted(
-        random.sample(
-            list(range(test_continuous, 378 - train_l - label_l - k_flod * test_continuous + 1, test_continuous)),
-            test_days)
-    ))).tolist()  # 已随机划分好的基准k折测试集
-    print("k_flod_test_list:", k_flod_test_list)
+    # 蒙特卡洛划分
+    # k_flod_test_list = (np.array(sorted(
+    #     random.sample(
+    #         list(range(test_continuous, 378 - train_l - label_l - k_flod * test_continuous + 1, test_continuous)),
+    #         test_days)
+    # ))).tolist()  # 已随机划分好的基准k折测试集
+    # 真正的k折划分
+    k_flod_test_list = list(
+        range(test_continuous, 378 - train_l - label_l - k_flod * test_continuous + 1, test_continuous))
+    random.shuffle(k_flod_test_list)  # 打乱顺序，方便k折
+    print("打乱后的k_flod_test_list和长度:", len(k_flod_test_list), k_flod_test_list)
     set2_flod = []
     set1_flod = []
     e_flod = []
@@ -461,9 +467,9 @@ def createDataSet(k_flod=10, train_l=Train_length, label_l=Test_length, test_day
         e_flod.append(e)
         v_flod.append(v)
         output_data = [set1, set2, e, v]
-        if not os.path.exists("dataset/10_flod_split_" + str(int(window / 2)) + "h"):
-            os.makedirs("dataset/10_flod_split_" + str(int(window / 2)) + "h")
-        torch.save(output_data, "dataset/10_flod_split_" + str(int(window / 2)) + "h/split_0" + str(flod) + ".pt")
+        if not os.path.exists("dataset/10_realflod_split_" + str(int(window / 2)) + "h"):
+            os.makedirs("dataset/10_realflod_split_" + str(int(window / 2)) + "h")
+        torch.save(output_data, "dataset/10_realflod_split_" + str(int(window / 2)) + "h/split_0" + str(flod) + ".pt")
 
     return set1_flod, set2_flod, e_flod, v_flod
 
@@ -475,7 +481,7 @@ def createDataSetSingleFold(**kwargs):
 
 if __name__ == '__main__':
     createDataSet(k_flod=10, train_l=Train_length, label_l=Test_length, test_days=10,
-                  test_continuous=3, size=SIZE, times=TIMES, ev_key=1, window=48)
+                  test_continuous=3, size=SIZE, times=TIMES, ev_key=1, window=24)
     # y=torch.load("dataset/10_flod_split/10_flod_split_00.pt")
     # train_set=y[0]
     # test_set=y[1]
