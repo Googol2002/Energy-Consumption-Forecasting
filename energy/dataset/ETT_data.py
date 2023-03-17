@@ -95,7 +95,7 @@ class Dataset_ETT_hour(Dataset):
 
     def __getitem__(self, index):
         s_begin = index
-        print(self.seq_len)
+        # print(self.seq_len)
         s_end = s_begin + self.seq_len
         # r_begin = s_end - self.label_len
         r_begin = s_end
@@ -123,7 +123,7 @@ class Dataset_ETT_hour(Dataset):
 
 
 if __name__ == '__main__':
-    Data = Dataset_ETT_hour(root_path='dataset\ETT-small', timeenc=0, scale=True, inverse=False,  # 固定参数
+    Data = Dataset_ETT_hour(root_path='dataset/ETT-small', timeenc=0, scale=True, inverse=False,  # 固定参数
                             features='S', target='OT', freq='h',  # 这三个参数控制分析哪列/哪些列数据，暂定最后一列'OT'
                             flag='train', data_path='ETTh2.csv', size=[24 * 4 * 4, 0, 24 * 4], window=24)  # 可能需要变的
     seq_x, seq_y, seq_x_mark, seq_y_mark = Data[4000]
