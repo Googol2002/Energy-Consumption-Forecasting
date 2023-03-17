@@ -6,8 +6,8 @@ from matplotlib import pyplot as plt
 from torch import nn
 from torch.utils.data import DataLoader
 
-from dataset import London_11_14_random_select, construct_dataloader
-from dataset.london_clean import London_11_14_set, createDataSet, createDataSetSingleFold
+from dataset import construct_dataloader
+from dataset.ETT_data import Dataset_ETT_hour
 from helper.plotter import SingleTaskPlotter
 from helper.recorder import SingleTaskRecorder
 from model import check_gradient_norm_L2
@@ -24,47 +24,20 @@ WEIGHT_DECAY = 0.01
 BATCH_SIZE = 128
 HIDDEN_SIZE = 256
 KERNEL_SIZE = 7
-PERIOD = 48
+PERIOD = 24
 TIME_SIZE = 7 + 12
-X_LENGTH = 30
-Y_LENGTH = 7
+X_LENGTH = 16
+Y_LENGTH = 4
 EPOCH_STEP = 200
 TOLERANCE = 40
 LATITUDE_FACTOR = 1
 LEARNING_RATE = 2e-3
-MEANS_SCALE_FACTOR = 100
-VARIANCES_SCALE_FACTOR = 10000
+# MEANS_SCALE_FACTOR = 100
+# VARIANCES_SCALE_FACTOR = 10000
 VARIANCES_DECAY = 2 * 1e-5
-NOISE_STD_VARIANCE = 4
+NOISE_STD_VARIANCE = 0.01
 
-TASK_ID = "ForecastingWithCNNAttention"
-
-bias_fn = nn.L1Loss()
-
-
-def regression_display(model, sample):
-    energy_x, energy_y, time_x, time_y = sample
-
-    device = device_manager.device
-    with torch.no_grad():
-        pred = model(energy_x.to(device, dtype=torch.float32),
-                     time_x.to(device, dtype=torch.float32),
-                     time_y.to(device, dtype=torch.float32)).cpu().numpy()
-
-    fig, axs = plt.subplots(2, 1, figsize=(12, 12))
-
-    means_cup, variances_cup = pred[:, :, 0].reshape(-1), pred[:, :, 1].reshape(-1)
-    energy_x, energy_y = energy_x.reshape(-1).cpu().numpy(), energy_y.reshape(-1).cpu().numpy()
-
-    axs[0].plot(range(energy_y.shape[0]), energy_y)
-    axs[0].plot(range(energy_y.shape[0]), means_cup, color="red")
-    axs[0].fill_between(range(energy_y.shape[0]), means_cup - LATITUDE_FACTOR * np.sqrt(variances_cup),
-                        means_cup + LATITUDE_FACTOR * np.sqrt(variances_cup), facecolor='red', alpha=0.3)
-
-    axs[1].plot(range(-energy_x.shape[0], energy_y.shape[0]), np.concatenate([energy_x, energy_y]))
-    axs[1].plot(range(energy_y.shape[0]), means_cup, color="red")
-
-    plt.show()
+TASK_ID = "Forecasting_OT"
 
 
 def val_loop(dataloader, model, loss_fn, recorder, tag="Val"):
@@ -130,25 +103,18 @@ def train_loop(dataloader, model, loss_fn, optimizer, recorder):
 
 loss_function = customize_loss(VARIANCES_DECAY)
 
-def train_model(recorder, plotter, dataset=None, process_id=None):
+def train_model(recorder, plotter, datasets=None, process_id=None):
     global TASK_ID
     TASK_ID = "{}({})".format(TASK_ID, process_id)
 
-    train_set, val_and_test_set, energy_expectations, energy_variances = dataset if dataset \
-        else createDataSetSingleFold(train_l=X_LENGTH, label_l=Y_LENGTH, test_days=10,
-                                     test_continuous=3, size=3500, times=10)
-
-    val, test = construct_dataloader(val_and_test_set, train_ratio=0.5,
-                                     validation_ratio=0.5, test_ratio=0,
-                                     batch_size=BATCH_SIZE)
-    train = DataLoader(train_set, batch_size=BATCH_SIZE, shuffle=True)
+    train, val, test = (DataLoader(d, batch_size=BATCH_SIZE) for d in datasets)
 
     predictor = CNN_Attention_Model(input_size=PERIOD, hidden_size=HIDDEN_SIZE, num_layers=1,
                                     output_size=PERIOD, batch_size=BATCH_SIZE, period=PERIOD,
                                     attention_size=X_LENGTH,    # 设置了固定Attention的长度
-                                    time_size=TIME_SIZE, means=energy_expectations, kernel_size=KERNEL_SIZE,
-                                    means_scale_factor=MEANS_SCALE_FACTOR,
-                                    variances_scale_factor=VARIANCES_SCALE_FACTOR,
+                                    time_size=TIME_SIZE, means=1, kernel_size=KERNEL_SIZE,
+                                    means_scale_factor=1,
+                                    variances_scale_factor=1,
                                     mlp_sizes=[HIDDEN_SIZE * 2 + TIME_SIZE, HIDDEN_SIZE, 128, 128, 64, PERIOD])
 
     recorder.std_print(TASK_ID + ' model:' + "\n" + str(predictor))
@@ -197,24 +163,13 @@ def train_model(recorder, plotter, dataset=None, process_id=None):
     plotter.plot_sensitivity_curve_weekly(best_model, val.dataset)
 
 
-def create_dataset_multitask(k_flod=2):
-    return createDataSet(k_flod=k_flod, train_l=X_LENGTH, label_l=Y_LENGTH, test_days=10,
-                         test_continuous=3, size=3500, times=10)
-
-
-def test_model_on_whole_data():
-    predictor = load_task_model(TASK_ID, name="Date(2022-11-06 17-06-14).pth")
-    predictor.eval()
-
-    # whole_dataset = London_11_14_random_select(train_l=X_LENGTH, test_l=Y_LENGTH, size=3500)
-    # dataloader = DataLoader(whole_dataset, shuffle=True)
-
-    # val_loop(dataloader, predictor, loss_function, tag="Whole Dataset")
-    # plot_forecasting_weekly_for_comparison(TASK_ID, predictor, whole_dataset, LATITUDE_FACTOR, 230)
-
-
 RANDOM_SEED = 10001
 torch.cuda.manual_seed(RANDOM_SEED)
 if __name__ == "__main__":
     single_recorder = SingleTaskRecorder(TASK_ID)
-    train_model(single_recorder, SingleTaskPlotter(single_recorder))
+    datasets = [Dataset_ETT_hour(root_path='dataset/ETT-small', timeenc=0, scale=True,
+                                 inverse=False,  features='S', target='OT', freq='h',
+                                 flag='train', data_path='ETTh2.csv',
+                                 size=[24 * 4 * 4, 0, 24 * 4], window=24)
+                for f in ['train', 'val', 'test']]
+    train_model(single_recorder, SingleTaskPlotter(single_recorder), datasets=datasets)

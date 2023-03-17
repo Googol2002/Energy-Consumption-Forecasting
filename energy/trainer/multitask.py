@@ -12,7 +12,7 @@ from helper.plotter import MultiTaskPlotter
 from helper.recorder import MultiTaskRecorder
 from task.forecasting_with_cnn_attention import train_model as train
 
-TASK_ID = "MULTI_TASK"
+TASK_ID = "10_realflod_split_24h"
 
 def process_runner(fold, cuda_unit: str, dataset_path, date_tag):
     dataset = torch.load(dataset_path)
@@ -31,7 +31,7 @@ class MultiTaskTrainer:
     def __init__(self, cuda_list):
         self.cuda_list = cuda_list
         self.date_tag = current_time_tag()
-        self.results= []
+        self.results = []
 
     def dispatch(self, out_file=None):
         """
@@ -42,7 +42,7 @@ class MultiTaskTrainer:
         tasks = []
         with mp.Pool(processes=len(self.cuda_list)) as pool:
             for fold, cuda_unit in enumerate(self.cuda_list):
-                path = os.path.join("dataset", "10_flod_splits", "10_flod_split_{:0>2d}.pt".format(fold))
+                path = os.path.join("dataset", "10_realflod_split_24h", "split_{:0>2d}.pt".format(fold))
                 task = pool.apply_async(process_runner, (fold, cuda_unit, path, self.date_tag))
                 tasks.append(task)
 
@@ -62,5 +62,7 @@ class MultiTaskTrainer:
 
 
 if __name__ == "__main__":
-    trainer = MultiTaskTrainer(["cuda:1", "cuda:2", "cuda:3", "cuda:0"])
-    trainer.dispatch(out_file=r"out.json")
+    trainer = MultiTaskTrainer(["cuda:0", "cuda:1", "cuda:2", "cuda:3",
+                                "cuda:0", "cuda:1", "cuda:2", "cuda:3",
+                                "cuda:0", "cuda:1"])
+    trainer.dispatch(out_file=r"24h.json")
