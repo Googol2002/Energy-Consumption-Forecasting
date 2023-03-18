@@ -100,7 +100,7 @@ class SingleTaskRecorder(Recorder):
 
         performance.to_csv(path, index=False)
 
-    def __init__(self, task_id, to_console=True, to_disk=True):
+    def __init__(self, task_id, to_console=0, to_disk=0):
         super().__init__(task_id, to_console=to_console, to_disk=to_disk)
 
     def _model_directory_path(self):
@@ -123,7 +123,7 @@ class SingleTaskRecorder(Recorder):
 
 class MultiTaskRecorder(Recorder):
 
-    def __init__(self, task_id, process_id, to_console=True, to_disk=True, date_tag=None):
+    def __init__(self, task_id, process_id, to_console=0, to_disk=0, date_tag=None):
         super().__init__(task_id, to_console=to_console, to_disk=to_disk)
         self.process_id = process_id
         if date_tag:

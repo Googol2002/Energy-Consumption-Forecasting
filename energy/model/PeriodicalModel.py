@@ -19,7 +19,7 @@ def customize_loss(variances_decay):
         _means, _variances = outputs[:, :, 0], outputs[:, :, 1]
 
         return torch.sum((labels - _means) ** 2 / (_variances + STABILIZING_FACTOR) +
-                         variances_decay * _variances)
+                         variances_decay * _variances) / outputs.shape[0]
     return loss
 
 

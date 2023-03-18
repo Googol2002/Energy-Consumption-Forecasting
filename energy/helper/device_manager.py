@@ -4,11 +4,12 @@ import torch
 
 def _fetch_empty_device():
     global device
-    for i in range(torch.cuda.device_count()):
-        if torch.cuda.memory_allocated(device=0) < 1024*1024*256:
-            device = "cuda:{}".format(i)
-            return
-    raise EnvironmentError("No Available Cuda kernel!")
+    # for i in range(torch.cuda.device_count()):
+    #     if torch.cuda.memory_allocated(device=0) < 1024*1024*256:
+    #         device = "cuda:{}".format(i)
+    #         return
+    # raise EnvironmentError("No Available Cuda kernel!")
+    device = "cuda:1"
 
 
 parser = argparse.ArgumentParser(description='The Oracle是一个电力负载预测模型.')

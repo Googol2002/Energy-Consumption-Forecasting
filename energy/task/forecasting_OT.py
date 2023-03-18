@@ -10,9 +10,10 @@ from dataset import construct_dataloader
 from dataset.ETT_data import Dataset_ETT_hour
 from helper.plotter import SingleTaskPlotter
 from helper.recorder import SingleTaskRecorder
-from model import check_gradient_norm_L2
+from model import check_gradient_norm_L2, NLinear
 
 from model.AdvancedModel import CNN_Attention_Model
+from model.DifferentialModel import Differential, DifferentialDaily
 from model.PeriodicalModel import customize_loss
 
 from helper.log import load_task_model
@@ -20,7 +21,7 @@ from helper.log import load_task_model
 import helper.device_manager as device_manager
 
 GRADIENT_NORM = 100
-WEIGHT_DECAY = 0.01
+WEIGHT_DECAY = 0
 BATCH_SIZE = 128
 HIDDEN_SIZE = 256
 KERNEL_SIZE = 7
@@ -31,18 +32,18 @@ Y_LENGTH = 4
 EPOCH_STEP = 200
 TOLERANCE = 40
 LATITUDE_FACTOR = 1
-LEARNING_RATE = 2e-3
-# MEANS_SCALE_FACTOR = 100
-# VARIANCES_SCALE_FACTOR = 10000
-VARIANCES_DECAY = 2 * 1e-5
-NOISE_STD_VARIANCE = 0.01
+LEARNING_RATE = 2e-5
+VARIANCES_DECAY = 1
+NOISE_STD_VARIANCE = 0
 
 TASK_ID = "Forecasting_OT"
 
 
+MAE_Loss = nn.L1Loss()
+
 def val_loop(dataloader, model, loss_fn, recorder, tag="Val"):
     size = len(dataloader.dataset)
-    val_loss, accuracy, within, utilization = 0, 0, 0, 0
+    val_loss, mae = 0, 0
 
     device = device_manager.device
     with torch.no_grad():
@@ -50,22 +51,17 @@ def val_loop(dataloader, model, loss_fn, recorder, tag="Val"):
             energy_x, time_x = energy_x.to(device, dtype=torch.float32), time_x.to(device, dtype=torch.float32)
             energy_y, time_y = energy_y.to(device, dtype=torch.float32), time_y.to(device, dtype=torch.float32)
 
-            pred = model(energy_x, time_x, time_y)
+            # pred = model(energy_x, time_x, time_y)[:, :, 0]
+            pred = model(energy_x.reshape(energy_x.shape[0], -1, 1)).reshape(time_y.shape[0], -1, PERIOD)
+
             val_loss += loss_fn(pred, energy_y).item()
+            mae += torch.sum(torch.abs(pred - energy_y)).item()
 
-            means = pred[:, :, 0]
-            variances = pred[:, :, 1]
-            accuracy += torch.sum(torch.abs(means - energy_y) / energy_y).item()
-            within += torch.sum(energy_y <= means + LATITUDE_FACTOR * torch.sqrt(variances))
-            utilization += torch.sum(energy_y / (means + LATITUDE_FACTOR * torch.sqrt(variances)))
+    val_loss /= len(dataloader)
+    mae /= (size * PERIOD * Y_LENGTH)
+    recorder.std_print(tag + " " + f"Loss(approximately) : {val_loss:>4f}\tMAE : {mae:>4f}")
 
-    val_loss /= (size * PERIOD)
-    recorder.std_print(tag + " " + f"Error: \n Accuracy: {100 - (100 * accuracy / (size * PERIOD * Y_LENGTH)):>0.3f}%,"
-                                   f" Avg loss: {val_loss:>8f}")
-    recorder.std_print(f" Within the Power Generation: {(100 * within / (size * PERIOD * Y_LENGTH)):>0.3f}%")
-    recorder.std_print(f" Utilization Rate:  {(100 * utilization / (size * PERIOD * Y_LENGTH)):>0.3f}%\n")
-
-    return val_loss, 1 - accuracy / (size * PERIOD * Y_LENGTH)
+    return val_loss, 0
 
 
 def train_loop(dataloader, model, loss_fn, optimizer, recorder):
@@ -80,7 +76,10 @@ def train_loop(dataloader, model, loss_fn, optimizer, recorder):
         energy_x += (torch.randn(energy_x.shape, device=device) * NOISE_STD_VARIANCE)
 
         # Compute prediction and loss
-        pred = model(energy_x, time_x, time_y)
+
+        # pred = model(energy_x, time_x, time_y)[:, :, 0]
+        pred = model(energy_x.reshape(energy_x.shape[0], -1, 1)).reshape(time_y.shape[0], -1, PERIOD)
+
         loss = loss_fn(pred, energy_y)
 
         # Backpropagation
@@ -96,27 +95,28 @@ def train_loop(dataloader, model, loss_fn, optimizer, recorder):
 
         if batch % 10 == 0:
             loss, current = loss.item(), batch * len(energy_x)
-            recorder.std_print(f"loss: {loss:>7f} Avg loss: {loss / (energy_x.shape[0] * PERIOD) :>7f}  [{current:>5d}/{size:>5d}]")
+            recorder.std_print(f"loss: {loss:>7f} [{current:>5d}/{size:>5d}]")
 
     return total_loss / (PERIOD * size), gradient_norm ** 0.5
 
 
-loss_function = customize_loss(VARIANCES_DECAY)
-
+loss_function = nn.MSELoss()
 def train_model(recorder, plotter, datasets=None, process_id=None):
     global TASK_ID
     TASK_ID = "{}({})".format(TASK_ID, process_id)
 
     train, val, test = (DataLoader(d, batch_size=BATCH_SIZE) for d in datasets)
 
-    predictor = CNN_Attention_Model(input_size=PERIOD, hidden_size=HIDDEN_SIZE, num_layers=1,
-                                    output_size=PERIOD, batch_size=BATCH_SIZE, period=PERIOD,
-                                    attention_size=X_LENGTH,    # 设置了固定Attention的长度
-                                    time_size=TIME_SIZE, means=1, kernel_size=KERNEL_SIZE,
-                                    means_scale_factor=1,
-                                    variances_scale_factor=1,
-                                    mlp_sizes=[HIDDEN_SIZE * 2 + TIME_SIZE, HIDDEN_SIZE, 128, 128, 64, PERIOD])
+    # predictor = CNN_Attention_Model(input_size=PERIOD, hidden_size=HIDDEN_SIZE, num_layers=1,
+    #                                 output_size=PERIOD, batch_size=BATCH_SIZE, period=PERIOD,
+    #                                 attention_size=X_LENGTH,    # 设置了固定Attention的长度
+    #                                 time_size=TIME_SIZE, means=1, kernel_size=KERNEL_SIZE,
+    #                                 means_scale_factor=1,
+    #                                 variances_scale_factor=1,
+    #                                 mlp_sizes=[HIDDEN_SIZE * 2 + TIME_SIZE, HIDDEN_SIZE, 128, 128, 64, PERIOD])
+    # predictor = DifferentialDaily(predictor)
 
+    predictor = NLinear.Model(X_LENGTH * PERIOD, Y_LENGTH * PERIOD)
     recorder.std_print(TASK_ID + ' model:' + "\n" + str(predictor))
     adam = torch.optim.Adam(predictor.parameters(), lr=LEARNING_RATE, weight_decay=WEIGHT_DECAY)
 
@@ -126,6 +126,7 @@ def train_model(recorder, plotter, datasets=None, process_id=None):
     for epoch in range(EPOCH_STEP):
         recorder.std_print("========EPOCH {}========\n".format(epoch))
         train_loss, norm = train_loop(train, predictor, loss_function, adam, recorder)
+        val_loop(train, predictor, loss_function, recorder, tag="Train")
         validation_loss, bias = val_loop(val, predictor, loss_function, recorder)
         tolerance += 1
         if min_val_loss > validation_loss > 0:
@@ -134,7 +135,7 @@ def train_model(recorder, plotter, datasets=None, process_id=None):
             tolerance = 0
         if tolerance > TOLERANCE:
             if process_id is None:
-                recorder.std_print(TASK_ID, "Early stopped at epoch {}.\n".format(epoch))
+                recorder.std_print("Early stopped at epoch {}.\n".format(epoch))
             else:
                 recorder.std_print("Process({}): Early stopped at {:>3d}/{:>3d}".format(process_id, epoch, EPOCH_STEP), level=1)
             break
@@ -143,7 +144,8 @@ def train_model(recorder, plotter, datasets=None, process_id=None):
         if process_id is not None and epoch % 5 == 0:
             recorder.std_print("Process({}):{:>3d}/{:>3d}".format(process_id, epoch, EPOCH_STEP), level=1)
 
-    best_model.lstm.flatten_parameters()
+    if hasattr(best_model, "lstm"):
+        best_model.lstm.flatten_parameters()
     recorder.std_print("========Best Performance========\n")
     _, train_accuracy = val_loop(train, best_model, loss_function, recorder, tag="Train")
     _, validation_accuracy = val_loop(val, best_model, loss_function, recorder, tag="Val")
@@ -152,10 +154,6 @@ def train_model(recorder, plotter, datasets=None, process_id=None):
                             validation_accuracy=validation_accuracy, test_accuracy=test_accuracy)
 
     recorder.std_print("Process({}) Training Completed!".format(process_id), level=1)
-
-    # 画图测试
-    # display_dataset = DataLoader(val.dataset, batch_size=1, shuffle=True)
-    # regression_display(best_model, next(iter(display_dataset)))
 
     # 需要更新新的画图模式
     plotter.plot_forecasting_random_samples_weekly(best_model, val.dataset, LATITUDE_FACTOR)
