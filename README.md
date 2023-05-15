@@ -3,14 +3,14 @@
 
 ```
 Val Error: 
- Accuracy: 95.186%, Avg loss: 1.119055
- Within the Power Generation: 93.011%
- Utilization Rate:  92.233%
+ Accuracy: 96.989%, Avg loss: 0.028614
+ Within the Power Generation: 96.875%
+ Utilization Rate:  91.673%
 
 Test Error: 
- Accuracy: 95.582%, Avg loss: 1.171130
- Within the Power Generation: 92.402%
- Utilization Rate:  92.588%
+ Accuracy: 97.106%, Avg loss: 0.028301
+ Within the Power Generation: 97.292%
+ Utilization Rate:  91.308%
 ```
 **Accuracy** 计算公式为: $\mathbb{E}_{x,y}\ {\left|\frac{\mathbf{model(x).mean} - y}{y}\right|}$.
 
