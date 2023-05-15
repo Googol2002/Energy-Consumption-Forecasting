@@ -19,7 +19,7 @@ Test Error:
 **Utilization Rate** 计算公式为：$\mathbb{E}_{x,y}\ \left[{1-\frac{y}{\mathbf{model(x).mean} + c\times \sqrt{\mathbf{model(x).variance}}}}\right]$，其中 $c\equiv1$.
 
 ## 项目介绍
-
+顺利通过大学生创新创业训练计划中期答辩，并被评级为国家级项目
 ![Slides](https://github.com/Googol2002/Energy-Consumption-Forecasting/blob/main/figure/slides/Slide1.JPG)
 ![Slides](https://github.com/Googol2002/Energy-Consumption-Forecasting/blob/main/figure/slides/Slide2.JPG)
 ![Slides](https://github.com/Googol2002/Energy-Consumption-Forecasting/blob/main/figure/slides/Slide3.JPG)
