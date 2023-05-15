@@ -8,6 +8,7 @@ from torch.utils.data import DataLoader
 
 from dataset import London_11_14_random_select, construct_dataloader
 from dataset.london_clean import London_11_14_set, createDataSet, createDataSetSingleFold
+from helper.plot import plot_forecasting_weekly_for_comparison
 from helper.plotter import SingleTaskPlotter
 from helper.recorder import SingleTaskRecorder
 from model import check_gradient_norm_L2
@@ -128,6 +129,41 @@ def train_loop(dataloader, model, loss_fn, optimizer, recorder):
     return total_loss / (PERIOD * size), gradient_norm ** 0.5
 
 
+def mock_data_predicted(model):
+    data = London_11_14_random_select(train_l=30, test_l=7, size=3000)
+    dataloader = DataLoader(data, batch_size=64, shuffle=False)
+
+    device = device_manager.device
+    record = list()
+
+    counter = 0
+    with torch.no_grad():
+        for (energy_x, energy_y, time_x, time_y) in dataloader:
+            energy_x, time_x = energy_x.to(device, dtype=torch.float32), time_x.to(device, dtype=torch.float32)
+            energy_y, time_y = energy_y.to(device, dtype=torch.float32), time_y.to(device, dtype=torch.float32)
+
+            pred = model(energy_x, time_x, time_y)
+            means = pred[:, :, 0]
+            variances = pred[:, :, 1]
+
+            date = data.df["DateTime"][23 * 48:]
+            for load_observed, load_predicted, variance_predicted, load_future in zip(
+                    energy_x.cpu().numpy(), means.cpu().numpy(),
+                    variances.cpu().numpy(), energy_y.cpu().numpy()):
+                record.append({
+                    "Date_observed": list(date[counter * 48: counter * 48 + 7 * 48]),
+                    "Load_observed": [float(v) for v in load_observed.reshape(-1)[23 * 48:]],
+                    "Date_predicted": list(date[counter * 48 + 7 * 48: counter * 48 + 14 * 48]),
+                    "Load_predicted": [float(v) for v in load_predicted.reshape(-1)],
+                    "Variance_predicted": [float(v) for v in variance_predicted.reshape(-1)],
+                    "Load_future":  [float(v) for v in load_future.reshape(-1)]
+                })
+
+                counter += 1
+
+    return record
+
+
 loss_function = customize_loss(VARIANCES_DECAY)
 
 def train_model(recorder, plotter, dataset=None, process_id=None):
@@ -187,14 +223,13 @@ def train_model(recorder, plotter, dataset=None, process_id=None):
 
     recorder.std_print("Process({}) Training Completed!".format(process_id), level=1)
 
-    # 画图测试
-    # display_dataset = DataLoader(val.dataset, batch_size=1, shuffle=True)
-    # regression_display(best_model, next(iter(display_dataset)))
-
     # 需要更新新的画图模式
     plotter.plot_forecasting_random_samples_weekly(best_model, val.dataset, LATITUDE_FACTOR)
     plotter.plot_training_process()
     plotter.plot_sensitivity_curve_weekly(best_model, val.dataset)
+
+    load_record = mock_data_predicted(predictor)
+    return load_record
 
 
 def create_dataset_multitask(k_flod=2):
@@ -202,15 +237,15 @@ def create_dataset_multitask(k_flod=2):
                          test_continuous=3, size=3500, times=10)
 
 
-def test_model_on_whole_data():
+def run_model_on_whole_data():
     predictor = load_task_model(TASK_ID, name="Date(2022-11-06 17-06-14).pth")
     predictor.eval()
 
-    # whole_dataset = London_11_14_random_select(train_l=X_LENGTH, test_l=Y_LENGTH, size=3500)
-    # dataloader = DataLoader(whole_dataset, shuffle=True)
+    whole_dataset = London_11_14_random_select(train_l=X_LENGTH, test_l=Y_LENGTH, size=3500)
+    dataloader = DataLoader(whole_dataset, shuffle=True)
 
-    # val_loop(dataloader, predictor, loss_function, tag="Whole Dataset")
-    # plot_forecasting_weekly_for_comparison(TASK_ID, predictor, whole_dataset, LATITUDE_FACTOR, 230)
+    val_loop(dataloader, predictor, loss_function, tag="Whole Dataset")
+    plot_forecasting_weekly_for_comparison(TASK_ID, predictor, whole_dataset, LATITUDE_FACTOR, 230)
 
 
 RANDOM_SEED = 10001
@@ -218,3 +253,4 @@ torch.cuda.manual_seed(RANDOM_SEED)
 if __name__ == "__main__":
     single_recorder = SingleTaskRecorder(TASK_ID)
     train_model(single_recorder, SingleTaskPlotter(single_recorder))
+    # run_model_on_whole_data()

@@ -10,7 +10,7 @@ from dataset import construct_dataloader
 from dataset.ETT_data import Dataset_ETT_hour
 from helper.plotter import SingleTaskPlotter
 from helper.recorder import SingleTaskRecorder
-from model import check_gradient_norm_L2, NLinear
+from model import check_gradient_norm_L2, NLinear, DailyLinear
 
 from model.AdvancedModel import CNN_Attention_Model
 from model.DifferentialModel import Differential, DifferentialDaily
@@ -20,21 +20,21 @@ from helper.log import load_task_model
 
 import helper.device_manager as device_manager
 
-GRADIENT_NORM = 100
-WEIGHT_DECAY = 0
-BATCH_SIZE = 128
+GRADIENT_NORM = 0.5
+WEIGHT_DECAY = 0.01
+BATCH_SIZE = 256
 HIDDEN_SIZE = 256
 KERNEL_SIZE = 7
 PERIOD = 24
 TIME_SIZE = 7 + 12
 X_LENGTH = 16
 Y_LENGTH = 4
-EPOCH_STEP = 200
-TOLERANCE = 40
+EPOCH_STEP = 500
+TOLERANCE = 60
 LATITUDE_FACTOR = 1
-LEARNING_RATE = 2e-5
+LEARNING_RATE = 5e-4
 VARIANCES_DECAY = 1
-NOISE_STD_VARIANCE = 0
+NOISE_STD_VARIANCE = 0.0001
 
 TASK_ID = "Forecasting_OT"
 
@@ -52,7 +52,8 @@ def val_loop(dataloader, model, loss_fn, recorder, tag="Val"):
             energy_y, time_y = energy_y.to(device, dtype=torch.float32), time_y.to(device, dtype=torch.float32)
 
             # pred = model(energy_x, time_x, time_y)[:, :, 0]
-            pred = model(energy_x.reshape(energy_x.shape[0], -1, 1)).reshape(time_y.shape[0], -1, PERIOD)
+            # pred = model(energy_x.reshape(energy_x.shape[0], -1, 1)).reshape(time_y.shape[0], -1, PERIOD)
+            pred = model(energy_x, time_x, time_y)
 
             val_loss += loss_fn(pred, energy_y).item()
             mae += torch.sum(torch.abs(pred - energy_y)).item()
@@ -78,7 +79,8 @@ def train_loop(dataloader, model, loss_fn, optimizer, recorder):
         # Compute prediction and loss
 
         # pred = model(energy_x, time_x, time_y)[:, :, 0]
-        pred = model(energy_x.reshape(energy_x.shape[0], -1, 1)).reshape(time_y.shape[0], -1, PERIOD)
+        # pred = model(energy_x.reshape(energy_x.shape[0], -1, 1)).reshape(time_y.shape[0], -1, PERIOD)
+        pred = model(energy_x, time_x, time_y)
 
         loss = loss_fn(pred, energy_y)
 
@@ -97,7 +99,7 @@ def train_loop(dataloader, model, loss_fn, optimizer, recorder):
             loss, current = loss.item(), batch * len(energy_x)
             recorder.std_print(f"loss: {loss:>7f} [{current:>5d}/{size:>5d}]")
 
-    return total_loss / (PERIOD * size), gradient_norm ** 0.5
+    return total_loss / len(dataloader), gradient_norm ** 0.5
 
 
 loss_function = nn.MSELoss()
@@ -115,8 +117,9 @@ def train_model(recorder, plotter, datasets=None, process_id=None):
     #                                 variances_scale_factor=1,
     #                                 mlp_sizes=[HIDDEN_SIZE * 2 + TIME_SIZE, HIDDEN_SIZE, 128, 128, 64, PERIOD])
     # predictor = DifferentialDaily(predictor)
+    # predictor = NLinear.Model(X_LENGTH * PERIOD, Y_LENGTH * PERIOD)
 
-    predictor = NLinear.Model(X_LENGTH * PERIOD, Y_LENGTH * PERIOD)
+    predictor = DailyLinear.Model(X_LENGTH, Y_LENGTH, PERIOD, TIME_SIZE)
     recorder.std_print(TASK_ID + ' model:' + "\n" + str(predictor))
     adam = torch.optim.Adam(predictor.parameters(), lr=LEARNING_RATE, weight_decay=WEIGHT_DECAY)
 
@@ -156,9 +159,9 @@ def train_model(recorder, plotter, datasets=None, process_id=None):
     recorder.std_print("Process({}) Training Completed!".format(process_id), level=1)
 
     # 需要更新新的画图模式
-    plotter.plot_forecasting_random_samples_weekly(best_model, val.dataset, LATITUDE_FACTOR)
+    # plotter.plot_forecasting_random_samples_weekly(best_model, val.dataset, LATITUDE_FACTOR)
     plotter.plot_training_process()
-    plotter.plot_sensitivity_curve_weekly(best_model, val.dataset)
+    # plotter.plot_sensitivity_curve_weekly(best_model, val.dataset)
 
 
 RANDOM_SEED = 10001
@@ -167,7 +170,7 @@ if __name__ == "__main__":
     single_recorder = SingleTaskRecorder(TASK_ID)
     datasets = [Dataset_ETT_hour(root_path='dataset/ETT-small', timeenc=0, scale=True,
                                  inverse=False,  features='S', target='OT', freq='h',
-                                 flag='train', data_path='ETTh2.csv',
+                                 flag=f, data_path='ETTh2.csv',
                                  size=[24 * 4 * 4, 0, 24 * 4], window=24)
                 for f in ['train', 'val', 'test']]
     train_model(single_recorder, SingleTaskPlotter(single_recorder), datasets=datasets)

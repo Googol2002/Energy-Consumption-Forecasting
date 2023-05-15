@@ -6,8 +6,10 @@ import torch
 from matplotlib import pyplot as plt
 from torch.utils.data import DataLoader
 
-from helper import LOG_DIRECTORY
+from helper import LOG_DIRECTORY, device_manager
 
+plt.rcParams["font.sans-serif"] = ["SimHei"]    # 设置字体
+plt.rcParams["axes.unicode_minus"] = False  # 该语句解决图像中的“-”负号的乱码问题
 CLIP = 10
 
 class Plotter:
@@ -41,7 +43,7 @@ class Plotter:
         fig.tight_layout(pad=5.0)
         display_dataset = DataLoader(dataset, batch_size=size, shuffle=True)
 
-        device = model.device
+        device = device_manager.device
         batch, (energy_x, energy_y, time_x, time_y) = next(iter(enumerate(display_dataset)))
         with torch.no_grad():
             pred = model(energy_x.to(device, dtype=torch.float32),
@@ -61,7 +63,7 @@ class Plotter:
             axs[i].set_ylabel("Energy Consumption")
 
     @_plot("TrainingProcess")
-    def plot_training_process(self, filename=None):
+    def plot_training_process(self):
         fig, axs = plt.subplots(2, 1, figsize=(12, 12))
 
         train_loss = np.asarray(self.recorder.train_losses)
