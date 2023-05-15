@@ -20,7 +20,7 @@ Test Error:
 
 ![A Example of Performances](https://github.com/Googol2002/Energy-Consumption-Forecasting/blob/main/figure/Performance-Date(2022-10-03%2016-24-03).png "A Example of Performances")
 
-![Slides](https://box.nju.edu.cn/seafhttp/files/417f72d3-89f3-44d5-ac8c-95de76cb4329/Slide1.JPG)
+![Slides](https://box.nju.edu.cn/seafhttp/files/e3c97c5e-f096-4852-9140-7a4e076a0ea5/%E5%B9%BB%E7%81%AF%E7%89%871.PNG)
 
 
 
